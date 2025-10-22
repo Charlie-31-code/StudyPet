@@ -53,19 +53,10 @@ py-xiaozhi is a Python-based Xiaozhi voice client, designed to learn coding and 
 - **Calendar Management Tools**: Full-featured calendar system with create, query, update, delete events, intelligent categorization and reminders
 - **Timer Tools**: Countdown timer functionality with delayed MCP tool execution and parallel task management
 - **Music Player Tools**: Online music search and playback with playback controls, lyrics display, and local cache management
-- **12306 Query Tools**: 12306 railway ticket query with train tickets, transfer queries, and route information
 - **Search Tools**: Web search and content retrieval with Bing search integration and intelligent content parsing
 - **Recipe Tools**: Rich recipe database with search, category browsing, and intelligent recommendations
 - **Map Tools**: Amap services with geocoding, route planning, nearby search, and weather queries
-- **Bazi Fortune Tools**: Traditional Chinese fortune-telling with Bazi calculation, marriage analysis, and lunar calendar queries
 - **Camera Tools**: Image capture and AI analysis with photo recognition and intelligent Q&A
-
-### 🏠 IoT Device Integration
-
-- **Device Management Architecture**: Unified device management based on Thing pattern with asynchronous property and method calls
-- **Smart Home Control**: Supports lighting, volume, temperature sensors, and other device control
-- **State Synchronization**: Real-time status monitoring with incremental updates and concurrent state retrieval
-- **Extensible Design**: Modular device drivers, easy to add new device types
 
 ### 🎵 Advanced Audio Processing
 
@@ -109,8 +100,8 @@ py-xiaozhi is a Python-based Xiaozhi voice client, designed to learn coding and 
 
 ### Basic Requirements
 
-- **Python Version**: 3.9 - 3.12
-- **Operating System**: Windows 10+, macOS 10.15+, Linux
+- **Python Version**: 3.10 - 3.12
+- **Operating System**: Windows 11
 - **Audio Devices**: Microphone and speaker devices
 - **Network Connection**: Stable internet connection (for AI services and online features)
 
@@ -239,8 +230,6 @@ python main.py --protocol mqtt       # MQTT protocol
 ### Extension Development
 
 - **Add MCP Tools**: Create new tool modules in `src/mcp/tools/` directory
-- **Add IoT Devices**: Inherit from `Thing` base class to implement new devices
-- **Add Protocols**: Implement `Protocol` abstract base class
 - **Add Interfaces**: Extend `BaseDisplay` to implement new UI components
 
 ### State Transition Diagram
@@ -259,14 +248,6 @@ python main.py --protocol mqtt       # MQTT protocol
      Playback +------------+
      Complete
 ```
-
-## Contribution Guidelines
-
-We welcome issue reports and code contributions. Please ensure you follow these specifications:
-
-1. Code style complies with PEP8 standards
-2. PR submissions include appropriate tests
-3. Update relevant documentation
 
 ## Community and Support
 
@@ -300,10 +281,3 @@ We welcome issue reports and code contributions. Please ensure you follow these 
   </a>
 </div>
 
-## Project Statistics
-
-[![Star History Chart](https://api.star-history.com/svg?repos=huangjunsen0406/py-xiaozhi&type=Date)](https://www.star-history.com/#huangjunsen0406/py-xiaozhi&Date)
-
-## License
-
-[MIT License](LICENSE)
