@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any, List, Optional, Dict
 
 from .base import Plugin
 
@@ -10,7 +10,7 @@ class PluginManager:
 
     def __init__(self) -> None:
         self._plugins: List[Plugin] = []
-        self._by_name: dict[str, Plugin] = {}
+        self._by_name: Dict[str, Plugin] = {}
 
     def register(self, *plugins: Plugin) -> None:
         for p in plugins:
@@ -23,7 +23,7 @@ class PluginManager:
                 except Exception:
                     pass
 
-    def get_plugin(self, name: str) -> Plugin | None:
+    def get_plugin(self, name: str) -> Optional[Plugin]:
         """
         根据插件名获取插件实例。返回 None 表示未注册。
         """

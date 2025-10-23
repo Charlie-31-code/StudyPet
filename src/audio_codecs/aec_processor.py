@@ -2,8 +2,17 @@ import platform
 from collections import deque
 from typing import Any, Dict, Optional
 
-import numpy as np
-import sounddevice as sd
+try:
+    import numpy as np
+except Exception:
+    np = None
+
+try:
+    import sounddevice as sd
+    _SD_AVAILABLE = True
+except Exception:
+    sd = None
+    _SD_AVAILABLE = False
 
 from src.constants.constants import AudioConfig
 from src.utils.logging_config import get_logger

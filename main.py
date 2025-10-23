@@ -121,11 +121,21 @@ if __name__ == "__main__":
         if args.mode == "gui":
             # 在GUI模式下，由main统一创建 QApplication 与 qasync 事件循环
             try:
-                import qasync
-                from PyQt5.QtWidgets import QApplication
-            except ImportError as e:
-                logger.error(f"GUI模式需要qasync和PyQt5库: {e}")
-                sys.exit(1)
+                import importlib
+
+                qasync = importlib.import_module("qasync")
+                QtWidgets = importlib.import_module("PyQt5.QtWidgets")
+                QApplication = getattr(QtWidgets, "QApplication")
+            except Exception as e:
+                # 如果导入失败，则记录并回退到 CLI 模式（便于在无 GUI 库的环境运行）
+                logger.warning(
+                    f"GUI 模式所需库 qasync/PyQt5 导入失败，回退到 CLI 模式: {e}"
+                )
+                # 直接运行 CLI 路径并退出主流程
+                exit_code = asyncio.run(
+                    start_app("cli", args.protocol, args.skip_activation)
+                )
+                sys.exit(exit_code)
 
             qt_app = QApplication.instance() or QApplication(sys.argv)
 

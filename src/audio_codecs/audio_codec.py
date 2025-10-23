@@ -4,10 +4,31 @@ import time
 from collections import deque
 from typing import Optional
 
-import numpy as np
-import opuslib
-import sounddevice as sd
-import soxr
+try:
+    import numpy as np
+except Exception:
+    np = None
+
+try:
+    import opuslib
+    _OPUS_AVAILABLE = True
+except Exception:
+    opuslib = None
+    _OPUS_AVAILABLE = False
+
+try:
+    import sounddevice as sd
+    _SD_AVAILABLE = True
+except Exception:
+    sd = None
+    _SD_AVAILABLE = False
+
+try:
+    import soxr
+    _SOXR_AVAILABLE = True
+except Exception:
+    soxr = None
+    _SOXR_AVAILABLE = False
 
 from src.audio_codecs.aec_processor import AECProcessor
 from src.constants.constants import AudioConfig

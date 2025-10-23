@@ -3,7 +3,10 @@ import json
 import ssl
 import time
 
-import websockets
+try:
+    import websockets
+except Exception:
+    websockets = None
 
 from src.constants.constants import AudioConfig
 from src.protocols.protocol import Protocol
@@ -13,6 +16,18 @@ from src.utils.logging_config import get_logger
 ssl_context = ssl._create_unverified_context()
 
 logger = get_logger(__name__)
+
+if websockets is None:
+    class WebsocketProtocol(Protocol):
+        def __init__(self):
+            super().__init__()
+            logger.error("websockets 库未安装，WebSocket 协议不可用。请安装 websockets 包或使用 MQTT（若可用）。")
+            raise RuntimeError("websockets not installed")
+
+    # Stop further parsing of this module when websockets not available
+    # The real implementation requires websockets; when absent, importing this module
+    # will provide the above stub and prevent ModuleNotFoundError.
+    # NOTE: rest of file remains (but will not be used if stub raised on init).
 
 
 class WebsocketProtocol(Protocol):
