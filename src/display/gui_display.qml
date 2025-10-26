@@ -17,6 +17,9 @@ Rectangle {
     signal modeButtonClicked()
     signal sendButtonClicked(string text)
     signal settingsButtonClicked()
+    signal studyModeClicked()
+    signal studyStartClicked()
+    signal studyStopClicked()
     // 标题栏相关信号
     signal titleMinimize()
     signal titleClose()
@@ -360,6 +363,99 @@ Rectangle {
                     background: Rectangle { color: settingsBtn.pressed ? "#e5e6eb" : (settingsBtn.hovered ? "#f2f3f5" : "#eceff3"); radius: 8 }
                     contentItem: Text { text: settingsBtn.text; font.family: "PingFang SC, Microsoft YaHei UI"; font.pixelSize: 13; color: "#1d2129"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                     onClicked: root.settingsButtonClicked()
+                }
+
+                // 学习模式入口
+                Button {
+                    id: studyBtn
+                    Layout.preferredWidth: 120
+                    Layout.preferredHeight: 40
+                    text: "学习模式"
+                    background: Rectangle { color: studyBtn.pressed ? "#e5e6eb" : (studyBtn.hovered ? "#f2f3f5" : "#eceff3"); radius: 8 }
+                    contentItem: Text { text: studyBtn.text; font.family: "PingFang SC, Microsoft YaHei UI"; font.pixelSize: 13; color: "#1d2129"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    onClicked: root.studyModeClicked()
+                }
+            }
+        }
+    }
+
+    // 学习模式覆盖页（浮层）
+    Rectangle {
+        id: studyOverlay
+        anchors.fill: parent
+        color: "#ffffffcc"
+        visible: displayModel ? displayModel.studyModeActive : false
+        z: 20
+
+        ColumnLayout {
+            anchors.centerIn: parent
+            spacing: 16
+            width: parent.width * 0.6
+
+            // 宠物图/表情
+            Image {
+                id: studyPetImg
+                source: displayModel ? displayModel.emotionPath : ""
+                fillMode: Image.PreserveAspectFit
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: parent.width * 0.4
+                height: width
+            }
+
+            // 计时文案
+            Text {
+                id: timerText
+                text: displayModel ? displayModel.studyTimerText : "25:00"
+                font.pixelSize: 28
+                horizontalAlignment: Text.AlignHCenter
+                color: "#222222"
+            }
+
+            // 进度条
+            Rectangle {
+                width: parent.width
+                height: 18
+                radius: 9
+                color: "#e6e6e6"
+                clip: true
+
+                Rectangle {
+                    id: progressBar
+                    x: 0
+                    y: 0
+                    height: parent.height
+                    width: parent.width * ((displayModel ? displayModel.studyProgress : 0) / 100)
+                    color: "#4caf50"
+                    radius: 9
+                }
+            }
+
+            // 操作按钮
+            RowLayout {
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: 12
+
+                Button {
+                    id: studyStartBtn
+                    Layout.preferredWidth: 140
+                    Layout.preferredHeight: 44
+                    text: "开始"
+                    background: Rectangle { color: "#165dff"; radius: 8 }
+                    contentItem: Text { text: studyStartBtn.text; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    onClicked: root.studyStartClicked()
+                }
+
+                Button {
+                    id: studyStopBtn
+                    Layout.preferredWidth: 140
+                    Layout.preferredHeight: 44
+                    text: "停止/退出"
+                    background: Rectangle { color: "#eceff3"; radius: 8 }
+                    contentItem: Text { text: studyStopBtn.text; color: "#1d2129"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    onClicked: {
+                        root.studyStopClicked()
+                        displayModel.studyModeActive = false
+                    }
                 }
             }
         }

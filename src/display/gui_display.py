@@ -69,6 +69,9 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
             "auto": None,
             "abort": None,
             "send_text": None,
+            # 学习模式回调: start/stop 由上层（UI 插件 / Application）处理
+            "study_start": None,
+            "study_stop": None,
         }
 
     # =========================================================================
@@ -83,6 +86,8 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
         auto_callback: Optional[Callable] = None,
         abort_callback: Optional[Callable] = None,
         send_text_callback: Optional[Callable] = None,
+        study_start_callback: Optional[Callable] = None,
+        study_stop_callback: Optional[Callable] = None,
     ):
         """
         设置回调函数.
@@ -95,6 +100,8 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
                 "auto": auto_callback,
                 "abort": abort_callback,
                 "send_text": send_text_callback,
+                "study_start": study_start_callback,
+                "study_stop": study_stop_callback,
             }
         )
 
@@ -358,6 +365,9 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
             "modeButtonClicked": self._on_mode_button_click,
             "sendButtonClicked": self._on_send_button_click,
             "settingsButtonClicked": self._on_settings_button_click,
+            "studyModeClicked": self._on_study_mode_click,
+            "studyStartClicked": self._on_study_start_click,
+            "studyStopClicked": self._on_study_stop_click,
         }
 
         # 标题栏控制信号映射
@@ -417,6 +427,29 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
         mode_text = "自动对话" if self.auto_mode else "手动对话"
         self.display_model.update_mode_text(mode_text)
         self.display_model.set_auto_mode(self.auto_mode)
+
+    def _on_study_mode_click(self):
+        """
+        打开/关闭学习模式覆盖面板（只切换数据模型标志，QML 绑定会控制可见性）。
+        """
+        try:
+            current = bool(self.display_model.studyModeActive)
+        except Exception:
+            current = False
+        self.display_model.studyModeActive = not current
+
+    def _on_study_start_click(self):
+        """
+        学习模式开始按钮。
+        上层回调（UI 插件 -> Application）应处理番茄计时器的启动。
+        """
+        self._dispatch_callback("study_start")
+
+    def _on_study_stop_click(self):
+        """
+        学习模式停止/退出按钮。
+        """
+        self._dispatch_callback("study_stop")
 
     def _on_send_button_click(self, text: str):
         """

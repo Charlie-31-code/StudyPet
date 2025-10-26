@@ -147,3 +147,72 @@ class GuiDisplayModel(QObject):
             self.modeText = "自动对话"
         else:
             self.modeText = "手动对话"
+
+    # ---------- 学习模式相关属性 ----------
+    studyModeActiveChanged = pyqtSignal()
+    studyTimerTextChanged = pyqtSignal()
+    studyProgressChanged = pyqtSignal()
+    petStateChanged = pyqtSignal()
+
+    def _init_study_props(self):
+        self._study_mode_active = False
+        self._study_timer_text = "25:00"
+        self._study_progress = 0  # 0-100
+        self._pet_state = "idle"  # idle/studying/distracted
+
+    @pyqtProperty(bool, notify=studyModeActiveChanged)
+    def studyModeActive(self):
+        try:
+            return self._study_mode_active
+        except AttributeError:
+            self._init_study_props()
+            return self._study_mode_active
+
+    @studyModeActive.setter
+    def studyModeActive(self, value: bool):
+        if getattr(self, "_study_mode_active", False) != value:
+            self._study_mode_active = value
+            self.studyModeActiveChanged.emit()
+
+    @pyqtProperty(str, notify=studyTimerTextChanged)
+    def studyTimerText(self):
+        try:
+            return self._study_timer_text
+        except AttributeError:
+            self._init_study_props()
+            return self._study_timer_text
+
+    @studyTimerText.setter
+    def studyTimerText(self, value: str):
+        if getattr(self, "_study_timer_text", "") != value:
+            self._study_timer_text = value
+            self.studyTimerTextChanged.emit()
+
+    @pyqtProperty(int, notify=studyProgressChanged)
+    def studyProgress(self):
+        try:
+            return self._study_progress
+        except AttributeError:
+            self._init_study_props()
+            return self._study_progress
+
+    @studyProgress.setter
+    def studyProgress(self, value: int):
+        if getattr(self, "_study_progress", -1) != value:
+            self._study_progress = int(value)
+            self.studyProgressChanged.emit()
+
+    @pyqtProperty(str, notify=petStateChanged)
+    def petState(self):
+        try:
+            return self._pet_state
+        except AttributeError:
+            self._init_study_props()
+            return self._pet_state
+
+    @petState.setter
+    def petState(self, value: str):
+        if getattr(self, "_pet_state", "") != value:
+            self._pet_state = value
+            self.petStateChanged.emit()
+

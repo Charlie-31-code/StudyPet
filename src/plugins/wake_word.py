@@ -58,6 +58,18 @@ class WakeWordPlugin(Plugin):
         # 检测到唤醒词：切到自动对话（根据 AEC 自动选择实时/自动停）
         try:
             print(wake_word, full_text)
+            # 如果包含“番茄”相关关键词，则尝试启动番茄计时器
+            try:
+                kw = str(wake_word or "") + " " + str(full_text or "")
+                if "番茄" in kw or "开始番茄" in kw:
+                    if hasattr(self.app, "tomato") and self.app.tomato:
+                        # 启动番茄计时器（非阻塞）
+                        try:
+                            self.app.tomato.start()
+                        except Exception:
+                            pass
+            except Exception:
+                pass
             # 若正在说话，交给应用的打断/状态机处理
             if hasattr(self.app, "device_state") and hasattr(
                 self.app, "start_auto_conversation"

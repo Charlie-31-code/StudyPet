@@ -84,6 +84,20 @@ class Application:
 
         # 插件
         self.plugins = PluginManager()
+        # 番茄计时器实例（供唤醒词和 UI 调用）
+        try:
+            from src.study.tomato import TomatoTimer
+            import os
+
+            # 支持测试模式：设置环境变量 TOMATO_TEST=1 将使用短时长（秒）方便调试
+            if os.environ.get("TOMATO_TEST", "0") in ("1", "true", "True"):
+                logger.info("TOMATO_TEST 环境变量开启：使用短时长番茄计时用于测试")
+                # study 25s, short break 5s, long break 15s
+                self.tomato = TomatoTimer(app=self, study_seconds=25, short_break=5, long_break=15)
+            else:
+                self.tomato = TomatoTimer(app=self)
+        except Exception:
+            self.tomato = None
 
     # -------------------------
     # 生命周期

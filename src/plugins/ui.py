@@ -77,7 +77,54 @@ class UIPlugin(Plugin):
                 "auto_callback": self._wrap_callback(self._auto_toggle),
                 "abort_callback": self._wrap_callback(self._abort),
                 "send_text_callback": self._send_text,
+                # 学习模式回调
+                "study_start_callback": self._wrap_callback(self._study_start),
+                "study_stop_callback": self._wrap_callback(self._study_stop),
             }
+            # 若存在番茄计时器，则把 UI 更新回调绑定到 timer
+            try:
+                tomato = getattr(self.app, "tomato", None)
+                if tomato and self.display:
+                    # 每秒 tick -> 更新 UI（使用 schedule_command_nowait 在主 loop 调度）
+                    def _on_tick(remaining, percent):
+                        m = remaining // 60
+                        s = remaining % 60
+                        text = f"{m:02d}:{s:02d}"
+                        try:
+                            self.app.schedule_command_nowait(
+                                lambda: setattr(self.display.display_model, "studyTimerText", text)
+                            )
+                            self.app.schedule_command_nowait(
+                                lambda: setattr(self.display.display_model, "studyProgress", int(percent))
+                            )
+                        except Exception:
+                            pass
+
+                    def _on_state(state):
+                        try:
+                            self.app.schedule_command_nowait(
+                                lambda: setattr(self.display.display_model, "petState", state)
+                            )
+                            # 根据简单状态映射改变表情（可扩展）
+                            if state == "distracted":
+                                self.app.schedule_command_nowait(
+                                    lambda: self.display.update_emotion("sad")
+                                )
+                            elif state == "studying":
+                                self.app.schedule_command_nowait(
+                                    lambda: self.display.update_emotion("focus")
+                                )
+                            else:
+                                self.app.schedule_command_nowait(
+                                    lambda: self.display.update_emotion("neutral")
+                                )
+                        except Exception:
+                            pass
+
+                    tomato.set_on_tick(_on_tick)
+                    tomato.set_on_state_change(_on_state)
+            except Exception:
+                pass
         else:
             # CLI 直接传递协程函数
             callbacks = {
@@ -87,6 +134,33 @@ class UIPlugin(Plugin):
             }
 
         await self.display.set_callbacks(**callbacks)
+
+    async def _study_start(self):
+        """从 UI 启动番茄计时。"""
+        try:
+            if getattr(self.app, "tomato", None):
+                # 打开学习面板（保持在 UI）
+                if self.display:
+                    try:
+                        self.display.display_model.studyModeActive = True
+                    except Exception:
+                        pass
+                self.app.tomato.start()
+        except Exception:
+            pass
+
+    async def _study_stop(self):
+        """从 UI 停止番茄计时并关闭学习模式。"""
+        try:
+            if getattr(self.app, "tomato", None):
+                self.app.tomato.stop()
+            if self.display:
+                try:
+                    self.display.display_model.studyModeActive = False
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     def _wrap_callback(self, coro_func):
         """
