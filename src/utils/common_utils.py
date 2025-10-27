@@ -158,8 +158,18 @@ def _play_windows_tts(text: str, set_chinese_voice: bool = True) -> bool:
         except Exception:
             pass
 
-        enhanced_text = text + "。 。 。"
-        speaker.Speak(enhanced_text)
+        # 直接播放文本，避免在末尾添加额外句点导致机械化停顿
+        try:
+            # 微调语速为稍慢，令发音更自然
+            try:
+                speaker.Rate = -1
+            except Exception:
+                pass
+            # 直接播放原始文本
+            speaker.Speak(text)
+        except Exception:
+            # 退回到简单播放
+            speaker.Speak(text)
         logger.info("已使用Windows语音合成播放文本")
         time.sleep(0.5)
         return True
@@ -254,6 +264,30 @@ def play_audio_nonblocking(text: str) -> None:
                 logger.error(f"备用音频播放出错: {e}")
 
         threading.Thread(target=audio_worker, daemon=True).start()
+
+
+def play_audio_personalized(text: str, style: str = "cheerful") -> None:
+    """播放带有语气/风格的短语（非阻塞）。
+
+    style: one of 'cheerful', 'gentle', 'formal'
+    目前实现为对文本进行少量修饰以改变语感；可扩展为选择不同 TTS 音色。
+    """
+    try:
+        prefix = ""
+        suffix = ""
+        if style == "cheerful":
+            prefix = "太棒了！"
+            suffix = " 加油！"
+        elif style == "gentle":
+            prefix = "温柔提示："
+            suffix = "，慢慢来。"
+        elif style == "formal":
+            prefix = "提示："
+            suffix = "。请继续。"
+        enhanced = f"{prefix}{text}{suffix}"
+        play_audio_nonblocking(enhanced)
+    except Exception as e:
+        logger.error(f"播放个性化语音失败: {e}")
 
 
 def extract_verification_code(text: str) -> Optional[str]:

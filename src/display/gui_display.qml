@@ -388,73 +388,141 @@ Rectangle {
         z: 20
 
         ColumnLayout {
-            anchors.centerIn: parent
+            id: studyColumn
+            Layout.alignment: Qt.AlignHCenter
             spacing: 16
-            width: parent.width * 0.6
+            width: parent.width * 0.8
 
-            // 宠物图/表情
-            Image {
-                id: studyPetImg
-                source: displayModel ? displayModel.emotionPath : ""
-                fillMode: Image.PreserveAspectFit
-                anchors.horizontalCenter: parent.horizontalCenter
-                width: parent.width * 0.4
-                height: width
-            }
-
-            // 计时文案
-            Text {
-                id: timerText
-                text: displayModel ? displayModel.studyTimerText : "25:00"
-                font.pixelSize: 28
-                horizontalAlignment: Text.AlignHCenter
-                color: "#222222"
-            }
-
-            // 进度条
-            Rectangle {
-                width: parent.width
-                height: 18
-                radius: 9
-                color: "#e6e6e6"
-                clip: true
-
-                Rectangle {
-                    id: progressBar
-                    x: 0
-                    y: 0
-                    height: parent.height
-                    width: parent.width * ((displayModel ? displayModel.studyProgress : 0) / 100)
-                    color: "#4caf50"
-                    radius: 9
-                }
-            }
-
-            // 操作按钮
+            // 主横向布局：左侧宠物/表情，右侧计时/人脸/进度/按钮
             RowLayout {
-                anchors.horizontalCenter: parent.horizontalCenter
-                spacing: 12
+                Layout.alignment: Qt.AlignHCenter
+                spacing: 20
+                Layout.preferredWidth: parent.width
 
-                Button {
-                    id: studyStartBtn
-                    Layout.preferredWidth: 140
-                    Layout.preferredHeight: 44
-                    text: "开始"
-                    background: Rectangle { color: "#165dff"; radius: 8 }
-                    contentItem: Text { text: studyStartBtn.text; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                    onClicked: root.studyStartClicked()
+                // 左侧：宠物图/表情（较大）
+                Image {
+                    id: studyPetImg
+                    source: displayModel ? displayModel.emotionPath : ""
+                    fillMode: Image.PreserveAspectFit
+                    Layout.preferredWidth: parent.width * 0.35
+                    Layout.preferredHeight: parent.width * 0.35
                 }
 
-                Button {
-                    id: studyStopBtn
-                    Layout.preferredWidth: 140
-                    Layout.preferredHeight: 44
-                    text: "停止/退出"
-                    background: Rectangle { color: "#eceff3"; radius: 8 }
-                    contentItem: Text { text: studyStopBtn.text; color: "#1d2129"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                    onClicked: {
-                        root.studyStopClicked()
-                        displayModel.studyModeActive = false
+                // 右侧：计时与人脸窗口等
+                ColumnLayout {
+                    Layout.preferredWidth: parent.width * 0.45
+                    spacing: 12
+
+                    // 计时文案
+                    Text {
+                        id: timerText
+                        text: displayModel ? displayModel.studyTimerText : "25:00"
+                        font.pixelSize: 56
+                        horizontalAlignment: Text.AlignHCenter
+                        Layout.alignment: Qt.AlignHCenter
+                        color: "#222222"
+                    }
+
+                    // 人脸窗口（放大并居中）
+                    Rectangle {
+                        id: faceWindow
+                        Layout.preferredWidth: parent.width
+                        Layout.preferredHeight: 180
+                        radius: 8
+                        color: "#ffffff"
+                        border.color: "#e6e6e6"
+                        border.width: 1
+                        Layout.alignment: Qt.AlignHCenter
+                        Image {
+                                id: faceImg
+                                // Avoid using anchors on an item that may be affected by layout sizing.
+                                // Use explicit sizing relative to the parent to prevent layout/anchor warnings.
+                                width: parent.width
+                                height: parent.height
+                                source: displayModel ? displayModel.faceImage : ""
+                                fillMode: Image.PreserveAspectCrop
+                                cache: true
+                            }
+                    }
+
+                    // 进度条
+                    Rectangle {
+                        Layout.preferredWidth: parent.width
+                        height: 18
+                        radius: 9
+                        color: "#e6e6e6"
+                        clip: true
+
+                        Rectangle {
+                            id: progressBar
+                            x: 0
+                            y: 0
+                            height: parent.height
+                            width: parent.width * ((displayModel ? displayModel.studyProgress : 0) / 100)
+                            color: "#4caf50"
+                            radius: 9
+                        }
+                    }
+
+                    // 操作按钮（居中）
+                    RowLayout {
+                        Layout.alignment: Qt.AlignHCenter
+                        spacing: 12
+
+                        Button {
+                            id: studyStartBtn
+                            Layout.preferredWidth: 140
+                            Layout.preferredHeight: 44
+                            text: "开始"
+                            background: Rectangle { color: "#165dff"; radius: 8 }
+                            contentItem: Text { text: studyStartBtn.text; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                            onClicked: {
+                                cameraDialog.open()
+                            }
+                        }
+
+                        Button {
+                            id: studyStopBtn
+                            Layout.preferredWidth: 140
+                            Layout.preferredHeight: 44
+                            text: "停止/退出"
+                            background: Rectangle { color: "#eceff3"; radius: 8 }
+                            contentItem: Text { text: studyStopBtn.text; color: "#1d2129"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                            onClicked: {
+                                root.studyStopClicked()
+                                displayModel.studyModeActive = false
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 摄像头权限确认对话框（放在布局外仍可定义于此处）
+            Dialog {
+                id: cameraDialog
+                modal: true
+                title: "摄像头权限"
+                standardButtons: Dialog.Ok | Dialog.Cancel
+                // Give the dialog an explicit implicitWidth to avoid binding loops
+                implicitWidth: 440
+                implicitHeight: 160
+                onAccepted: {
+                    // 用户允许，继续开始学习
+                    root.studyStartClicked()
+                }
+                onRejected: {
+                    // 用户拒绝，保持学习面板打开但不启动计时
+                }
+                contentItem: Item {
+                    // Use anchors inside contentItem and margins, but avoid binding content width to parent.width
+                    width: parent ? parent.width : 400
+                    height: parent ? parent.height : 120
+                    Text {
+                        id: cameraText
+                        anchors.fill: parent
+                        anchors.margins: 20
+                        text: "学习模式需要使用摄像头进行专注监控，是否允许？"
+                        wrapMode: Text.WordWrap
                     }
                 }
             }

@@ -153,12 +153,15 @@ class GuiDisplayModel(QObject):
     studyTimerTextChanged = pyqtSignal()
     studyProgressChanged = pyqtSignal()
     petStateChanged = pyqtSignal()
+    # 小人脸图像（data URL）
+    faceImageChanged = pyqtSignal()
 
     def _init_study_props(self):
         self._study_mode_active = False
         self._study_timer_text = "25:00"
         self._study_progress = 0  # 0-100
         self._pet_state = "idle"  # idle/studying/distracted
+        self._face_image = ""
 
     @pyqtProperty(bool, notify=studyModeActiveChanged)
     def studyModeActive(self):
@@ -215,4 +218,18 @@ class GuiDisplayModel(QObject):
         if getattr(self, "_pet_state", "") != value:
             self._pet_state = value
             self.petStateChanged.emit()
+
+    @pyqtProperty(str, notify=faceImageChanged)
+    def faceImage(self):
+        try:
+            return self._face_image
+        except AttributeError:
+            self._init_study_props()
+            return self._face_image
+
+    @faceImage.setter
+    def faceImage(self, value: str):
+        if getattr(self, "_face_image", "") != value:
+            self._face_image = value
+            self.faceImageChanged.emit()
 

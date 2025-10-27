@@ -98,6 +98,14 @@ class Application:
                 self.tomato = TomatoTimer(app=self)
         except Exception:
             self.tomato = None
+        # FaceMonitor（可选）
+        try:
+            from src.study.face import FaceMonitor
+            cfg_cam_idx = int(self.config.get_config("CAMERA.camera_index", 0) or 0)
+            # 延迟创建实例，只有在 UI / 学习模式启动时 start()
+            self.face_monitor = FaceMonitor(camera_index=cfg_cam_idx)
+        except Exception:
+            self.face_monitor = None
 
     # -------------------------
     # 生命周期
