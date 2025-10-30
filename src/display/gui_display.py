@@ -87,6 +87,7 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
         abort_callback: Optional[Callable] = None,
         send_text_callback: Optional[Callable] = None,
         study_start_callback: Optional[Callable] = None,
+        study_start_already_callback: Optional[Callable] = None,
         study_stop_callback: Optional[Callable] = None,
     ):
         """
@@ -101,6 +102,7 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
                 "abort": abort_callback,
                 "send_text": send_text_callback,
                 "study_start": study_start_callback,
+                "study_start_already": study_start_already_callback,
                 "study_stop": study_stop_callback,
             }
         )
@@ -367,6 +369,7 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
             "settingsButtonClicked": self._on_settings_button_click,
             "studyModeClicked": self._on_study_mode_click,
             "studyStartClicked": self._on_study_start_click,
+            "studyStartAlreadyClicked": self._on_study_start_already_click,
             "studyStopClicked": self._on_study_stop_click,
         }
 
@@ -444,6 +447,12 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
         上层回调（UI 插件 -> Application）应处理番茄计时器的启动。
         """
         self._dispatch_callback("study_start")
+
+    def _on_study_start_already_click(self):
+        """
+        当在学习模式已激活时用户再次点击“开始”按钮，触发一次性提示回调（不重复启动计时）。
+        """
+        self._dispatch_callback("study_start_already")
 
     def _on_study_stop_click(self):
         """

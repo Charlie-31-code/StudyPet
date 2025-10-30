@@ -19,6 +19,7 @@ Rectangle {
     signal settingsButtonClicked()
     signal studyModeClicked()
     signal studyStartClicked()
+    signal studyStartAlreadyClicked()
     signal studyStopClicked()
     // 标题栏相关信号
     signal titleMinimize()
@@ -423,6 +424,77 @@ Rectangle {
                         color: "#222222"
                     }
 
+                    // 自定义番茄计时设置（预设 + 手动分钟）
+                    RowLayout {
+                        Layout.alignment: Qt.AlignHCenter
+                        spacing: 8
+                        // 预设下拉
+                        ComboBox {
+                            id: presetCombo
+                            model: ["default", "deep", "short"]
+                            currentIndex: displayModel ? (displayModel.preset === "deep" ? 1 : (displayModel.preset === "short" ? 2 : 0)) : 0
+                            onCurrentTextChanged: {
+                                if (displayModel) {
+                                    displayModel.preset = currentText
+                                    if (currentText === "deep") {
+                                        displayModel.studyMinutes = 50
+                                        displayModel.breakMinutes = 10
+                                        displayModel.longBreakMinutes = 20
+                                    } else if (currentText === "short") {
+                                        displayModel.studyMinutes = 15
+                                        displayModel.breakMinutes = 5
+                                        displayModel.longBreakMinutes = 15
+                                    } else {
+                                        // default: load from model's current or config
+                                        // keep existing values
+                                    }
+                                }
+                            }
+                        }
+
+                        // 学习分钟输入
+                        SpinBox {
+                            id: studySpin
+                            from: 1; to: 180; stepSize: 1
+                            value: displayModel ? displayModel.studyMinutes : 25
+                            onValueChanged: { if (displayModel) displayModel.studyMinutes = value }
+                            Layout.preferredWidth: 120
+                        }
+
+                        Text { text: "分"; verticalAlignment: Text.AlignVCenter }
+
+                        // 休息分钟输入
+                        SpinBox {
+                            id: breakSpin
+                            from: 5; to: 36; stepSize: 1
+                            value: displayModel ? displayModel.breakMinutes : 5
+                            onValueChanged: { if (displayModel) displayModel.breakMinutes = value }
+                            Layout.preferredWidth: 120
+                        }
+
+                        Text { text: "休息分"; verticalAlignment: Text.AlignVCenter }
+
+                        // 长休息分钟
+                        SpinBox {
+                            id: longSpin
+                            from: 15; to: 30; stepSize: 1
+                            value: displayModel ? displayModel.longBreakMinutes : 15
+                            onValueChanged: { if (displayModel) displayModel.longBreakMinutes = value }
+                            Layout.preferredWidth: 120
+                        }
+
+                        Text { text: "长休息分"; verticalAlignment: Text.AlignVCenter }
+
+                        // cycles
+                        SpinBox {
+                            id: cyclesSpin
+                            from: 1; to: 10; stepSize: 1
+                            value: displayModel ? displayModel.cyclesBeforeLong : 4
+                            onValueChanged: { if (displayModel) displayModel.cyclesBeforeLong = value }
+                            Layout.preferredWidth: 90
+                        }
+                    }
+
                     // 人脸窗口（放大并居中）
                     Rectangle {
                         id: faceWindow
@@ -477,7 +549,13 @@ Rectangle {
                             background: Rectangle { color: "#165dff"; radius: 8 }
                             contentItem: Text { text: studyStartBtn.text; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                             onClicked: {
-                                cameraDialog.open()
+                                // 仅在尚未开始学习会话时请求摄像头权限
+                                if (displayModel && displayModel.studySessionActive) {
+                                    // 已在学习会话中，通知后端一次性提示
+                                    root.studyStartAlreadyClicked()
+                                } else {
+                                    cameraDialog.open()
+                                }
                             }
                         }
 

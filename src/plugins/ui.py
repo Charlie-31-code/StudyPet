@@ -1,4 +1,6 @@
 from typing import Any, Optional
+import time
+from pathlib import Path
 
 from src.constants.constants import AbortReason, DeviceState
 from src.plugins.base import Plugin
@@ -23,6 +25,13 @@ class UIPlugin(Plugin):
         self.display = None
         self._is_gui = False
         self.is_first = True
+        # 会话内提醒——使用时间戳和冷却来允许重复提醒但避免频繁打断
+        # 记录上一次播放时间（Unix timestamp, 0 表示未播放）
+        self._last_notification_time = {"absent": 0.0, "blocked": 0.0, "distracted": 0.0}
+        # 冷却时长（秒）：在冷却期内同类提醒不会重复播放
+        self._notification_cooldown = 60
+        # 会话内连贯的分心计数（用于每累计 3 次分心后提醒）
+        self._distracted_local_count = 0
 
     async def setup(self, app: Any) -> None:
         """
@@ -79,6 +88,7 @@ class UIPlugin(Plugin):
                 "send_text_callback": self._send_text,
                 # 学习模式回调
                 "study_start_callback": self._wrap_callback(self._study_start),
+                "study_start_already_callback": self._wrap_callback(self._study_start_already),
                 "study_stop_callback": self._wrap_callback(self._study_stop),
             }
             # 若存在番茄计时器，则把 UI 更新回调绑定到 timer
@@ -189,6 +199,20 @@ class UIPlugin(Plugin):
 
         await self.display.set_callbacks(**callbacks)
 
+    async def _study_start_already(self):
+        """当用户在已经处于学习模式时再次点击开始，播放一次提示语音（单次）。"""
+        try:
+            from src.utils.common_utils import play_audio_personalized
+            from src.utils.config_manager import ConfigManager
+
+            cfg = ConfigManager.get_instance()
+            personality = cfg.get_config("VOICE.PERSONALITY", "gentle")
+            # 使用非个性化语音播放一次提示（不要包含“太棒了”前缀）
+            from src.utils.common_utils import play_audio_nonblocking
+            play_audio_nonblocking("学习模式已在运行中。如需停止请点击停止按钮。")
+        except Exception:
+            pass
+
     async def _study_start(self):
         """从 UI 启动番茄计时。"""
         try:
@@ -207,15 +231,129 @@ class UIPlugin(Plugin):
                     cfg = ConfigManager.get_instance()
                     # 获取主界面语音风格，若未配置则默认使用 gentle（年轻温柔）
                     personality = cfg.get_config("VOICE.PERSONALITY", "gentle")
-                    play_audio_personalized("学习模式已开始。开始 25 分钟专注时间。", style=personality)
+                    # 先播放简短提示，具体时长将在读取配置后播报
+                    play_audio_personalized("学习模式已开始。", style=personality)
                 except Exception:
                     pass
+                # 重置会话内一次性提醒标志与分心计数
+                try:
+                    self._study_notification_flags = {"absent": False, "blocked": False}
+                    self._distracted_local_count = 0
+                except Exception:
+                    pass
+                # 启动番茄计时器
+                # 在启动前读取自定义时长（优先从配置读取），并应用约束：
+                # - 学习时长（分钟）：默认 25，最小 1，最大 180
+                # - 休息时长（分钟）：默认 5，最小 5，最大 36
+                try:
+                    # 优先使用 UI 上 display_model 的自定义值（实时修改），若不存在再回退到配置
+                    dm = getattr(self.display, 'display_model', None)
+                    from src.utils.config_manager import ConfigManager
+                    cfg = ConfigManager.get_instance()
+                    if dm:
+                        try:
+                            preset = (dm.preset or "default").lower()
+                        except Exception:
+                            preset = (cfg.get_config("TOMATO.preset", "default") or "default").lower()
+                    else:
+                        preset = (cfg.get_config("TOMATO.preset", "default") or "default").lower()
+                    # 支持预设：default(25/5)、deep(50/10)、short(15/5)
+                    if preset == "deep":
+                        study_min = 50
+                        break_min = 10
+                    elif preset == "short":
+                        study_min = 15
+                        break_min = 5
+                    else:
+                        # default - try UI model first
+                        if dm:
+                            try:
+                                study_min = int(getattr(dm, 'studyMinutes', cfg.get_config("TOMATO.study_minutes", 25)))
+                            except Exception:
+                                study_min = int(cfg.get_config("TOMATO.study_minutes", 25) or 25)
+                            try:
+                                break_min = int(getattr(dm, 'breakMinutes', cfg.get_config("TOMATO.break_minutes", 5)))
+                            except Exception:
+                                break_min = int(cfg.get_config("TOMATO.break_minutes", 5) or 5)
+                        else:
+                            study_min = int(cfg.get_config("TOMATO.study_minutes", 25) or 25)
+                            break_min = int(cfg.get_config("TOMATO.break_minutes", 5) or 5)
+                        study_min = max(1, min(180, study_min))
+                        break_min = max(5, min(36, break_min))
+
+                    # long break 优先使用配置指定值（若存在），否则使用短休息的两倍并限制在 15-30 分钟区间
+                    # long break: prefer UI value if present, else config
+                    long_cfg = None
+                    if dm:
+                        try:
+                            long_cfg = getattr(dm, 'longBreakMinutes', None)
+                        except Exception:
+                            long_cfg = None
+                    if long_cfg is None:
+                        long_cfg = cfg.get_config("TOMATO.long_break_minutes", None)
+                    if long_cfg is not None:
+                        try:
+                            long_min = int(long_cfg)
+                        except Exception:
+                            long_min = None
+                    else:
+                        long_min = None
+
+                    if long_min is None:
+                        long_min = max(15, min(30, int(break_min) * 2))
+                    else:
+                        # clamp provided value into allowed range 15-30
+                        try:
+                            long_min = max(15, min(30, int(long_min)))
+                        except Exception:
+                            long_min = max(15, min(30, int(break_min) * 2))
+
+                    # cycles before long break
+                    cycles_before_long = int(cfg.get_config("TOMATO.cycles_before_long", 4) or 4)
+                    if cycles_before_long < 1:
+                        cycles_before_long = 4
+
+                    # 应用到 TomatoTimer（以秒为单位）
+                    try:
+                        self.app.tomato.study_seconds = int(study_min) * 60
+                        self.app.tomato.short_break = int(break_min) * 60
+                        self.app.tomato.long_break = int(long_min) * 60
+                        self.app.tomato.cycles_before_long = int(cycles_before_long)
+                    except Exception:
+                        pass
+
+                    # 播放带时长的提示
+                    try:
+                        from src.utils.common_utils import play_audio_personalized
+                        play_audio_personalized(f"开始 {study_min} 分钟专注时间。", style=personality)
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+
                 self.app.tomato.start()
+                # 标记会话为激活状态（用于 QML 判断是否重复启动）
+                try:
+                    self.display.display_model.studySessionActive = True
+                except Exception:
+                    pass
                 # 启动人脸监控（如果存在）并绑定回调
                 fm = getattr(self.app, "face_monitor", None)
                 if fm:
                     try:
                         def _on_face_status(status: str, score: int):
+                            # 记录调试日志到 logs/face_monitor_events.log，便于排查未触发提醒的问题
+                            try:
+                                import os, time
+                                logs_dir = Path(__file__).resolve().parents[2] / 'logs'
+                                logs_dir.mkdir(parents=True, exist_ok=True)
+                                log_file = logs_dir / 'face_monitor_events.log'
+                                now_s = int(time.time())
+                                # 记录基础信息（status, score），后面会追加是否会触发语音的判断
+                                with open(log_file, 'a', encoding='utf-8') as f:
+                                    f.write(f"{now_s}\tstatus={status}\tscore={score}\n")
+                            except Exception:
+                                pass
                             # 在主 loop 调度 UI 更新与 tomato.seated
                             def _ui_update():
                                 try:
@@ -246,41 +384,158 @@ class UIPlugin(Plugin):
                             except Exception:
                                 pass
 
-                        fm.on_status = _on_face_status
-                        # 帧回调：把 BGR 帧编码为 data URL 并更新到 display_model.faceImage（QML 可直接使用）
-                        def _on_frame(frame):
+                            # 会话内语音提醒（基于冷却时间以支持重复提醒）
                             try:
-                                # 延迟导入，避免没有 cv2 时导入失败
-                                import base64
-                                import cv2 as _cv2
-
-                                if frame is None:
-                                    return
-                                # 缩放为小图以减少流量
-                                try:
-                                    small = _cv2.resize(frame, (240, 180))
-                                except Exception:
-                                    small = frame
-                                ret, buf = _cv2.imencode('.jpg', small, [int(_cv2.IMWRITE_JPEG_QUALITY), 70])
-                                if not ret:
-                                    return
-                                b64 = base64.b64encode(buf.tobytes()).decode('ascii')
-                                data_url = f"data:image/jpeg;base64,{b64}"
-
-                                try:
-                                    # 在主 loop 更新显示模型
-                                    self.app.schedule_command_nowait(
-                                        lambda: setattr(self.display.display_model, 'faceImage', data_url)
-                                    )
-                                except Exception:
-                                    pass
+                                if status in ("absent", "blocked"):
+                                    now_ts = time.time()
+                                    last = float(self._last_notification_time.get(status, 0.0))
+                                    if now_ts - last >= float(self._notification_cooldown):
+                                        from src.utils.common_utils import play_audio_nonblocking
+                                        if status == "absent":
+                                            # 用更贴近实际的提示文本：指出是离开工位/座位
+                                            play_audio_nonblocking("你暂时离开了工位，等你回来我们继续哦~")
+                                        else:
+                                            play_audio_nonblocking("摄像头似乎被挡住了，请确认摄像头可见~")
+                                        self._last_notification_time[status] = now_ts
                             except Exception:
                                 pass
 
+                            # 分心提醒：统计连续分心次数，当累计到 3 次时，在冷却允许下提醒一次；专注会重置计数和部分提醒时间
+                            try:
+                                if status == "distracted":
+                                    self._distracted_local_count += 1
+                                    if (self._distracted_local_count > 0) and (self._distracted_local_count % 3 == 0):
+                                        now_ts = time.time()
+                                        last = float(self._last_notification_time.get("distracted", 0.0))
+                                        if now_ts - last >= float(self._notification_cooldown):
+                                            from src.utils.common_utils import play_audio_nonblocking
+                                            play_audio_nonblocking("小提示：把注意力收回到任务上，你可以的！")
+                                            self._last_notification_time["distracted"] = now_ts
+                                elif status == "focused":
+                                    # 回到专注后重置分心计数并清除 absent/blocked 提示时间，
+                                    # 使得下次缺席或被挡能更快触发提示
+                                    self._distracted_local_count = 0
+                                    self._last_notification_time["absent"] = 0.0
+                                    self._last_notification_time["blocked"] = 0.0
+                            except Exception:
+                                pass
+
+                        fm.on_status = _on_face_status
+                        # 帧回调：为了提升主线程流畅性，采用生产者/消费者模式：
+                        # - on_frame 仅把最新帧放入队列（非阻塞）
+                        # - 后台编码线程按目标帧率（默认 4 FPS）取最新帧进行 JPEG 编码并调度更新 QML
+                        # 这样可以避免在主线程进行耗时的 JPEG 编码与 base64 操作，减少 UI 卡顿
                         try:
-                            fm.on_frame = _on_frame
+                            import queue as _queue
+                            import threading as _threading
+                            import time as _time
+                            import base64 as _base64
+                            import cv2 as _cv2
                         except Exception:
-                            pass
+                            _queue = None
+
+                        if _queue is None:
+                            # 回退到原来的简单实现（若环境缺少 cv2/queue）
+                            def _on_frame(frame):
+                                try:
+                                    import base64
+                                    import cv2 as _cv2
+                                    if frame is None:
+                                        return
+                                    try:
+                                        small = _cv2.resize(frame, (240, 180))
+                                    except Exception:
+                                        small = frame
+                                    ret, buf = _cv2.imencode('.jpg', small, [int(_cv2.IMWRITE_JPEG_QUALITY), 70])
+                                    if not ret:
+                                        return
+                                    b64 = base64.b64encode(buf.tobytes()).decode('ascii')
+                                    data_url = f"data:image/jpeg;base64,{b64}"
+                                    try:
+                                        self.app.schedule_command_nowait(
+                                            lambda: setattr(self.display.display_model, 'faceImage', data_url)
+                                        )
+                                    except Exception:
+                                        pass
+                                except Exception:
+                                    pass
+                            try:
+                                fm.on_frame = _on_frame
+                            except Exception:
+                                pass
+                        else:
+                            # 创建线程安全队列和编码线程
+                            fm._frame_queue = _queue.Queue(maxsize=4)
+                            fm._encoder_running = True
+                            # 目标帧率（可按需调整）：4 FPS 足以保证视觉连贯且 CPU 友好
+                            fm._encoder_fps = 4.0
+
+                            def _encoder_worker():
+                                last_sent = 0.0
+                                min_interval = 1.0 / max(1.0, fm._encoder_fps)
+                                while getattr(fm, '_encoder_running', False):
+                                    try:
+                                        # 等待一段时间后取出最新帧
+                                        try:
+                                            frame = fm._frame_queue.get(timeout=min_interval)
+                                        except Exception:
+                                            frame = None
+                                        # 尝试排空队列只保留最新帧，降低延迟
+                                        try:
+                                            while not fm._frame_queue.empty():
+                                                frame = fm._frame_queue.get_nowait()
+                                        except Exception:
+                                            pass
+
+                                        if frame is None:
+                                            continue
+
+                                        # 编码并发送（质量保持在 70）
+                                        try:
+                                            small = _cv2.resize(frame, (240, 180))
+                                        except Exception:
+                                            small = frame
+                                        ret, buf = _cv2.imencode('.jpg', small, [int(_cv2.IMWRITE_JPEG_QUALITY), 70])
+                                        if not ret:
+                                            continue
+                                        b64 = _base64.b64encode(buf.tobytes()).decode('ascii')
+                                        data_url = f"data:image/jpeg;base64,{b64}"
+                                        # 调度到主 loop 更新 QML
+                                        try:
+                                            self.app.schedule_command_nowait(
+                                                lambda d=data_url: setattr(self.display.display_model, 'faceImage', d)
+                                            )
+                                        except Exception:
+                                            pass
+                                    except Exception:
+                                        # 防止线程因异常退出
+                                        time.sleep(0.05)
+                                # 线程结束
+
+                            fm._encoder_thread = _threading.Thread(target=_encoder_worker, daemon=True)
+                            fm._encoder_thread.start()
+
+                            # 非阻塞地把帧放入队列（若队列满则丢弃旧帧）
+                            def _on_frame(frame):
+                                try:
+                                    if frame is None:
+                                        return
+                                    try:
+                                        fm._frame_queue.put_nowait(frame)
+                                    except Exception:
+                                        # 队列满时替换为最新（丢弃一项再尝试）
+                                        try:
+                                            _ = fm._frame_queue.get_nowait()
+                                            fm._frame_queue.put_nowait(frame)
+                                        except Exception:
+                                            pass
+                                except Exception:
+                                    pass
+
+                            try:
+                                fm.on_frame = _on_frame
+                            except Exception:
+                                pass
                         # 启动摄像头监控线程并开始会话统计
                         try:
                             try:
@@ -321,6 +576,16 @@ class UIPlugin(Plugin):
                     except Exception:
                         pass
                     fm.stop()
+                except Exception:
+                    pass
+                # 清除会话激活标志并重置会话内提醒计数
+                try:
+                    self.display.display_model.studySessionActive = False
+                except Exception:
+                    pass
+                try:
+                    self._study_notification_flags = {"absent": False, "blocked": False}
+                    self._distracted_local_count = 0
                 except Exception:
                     pass
             if self.display:
