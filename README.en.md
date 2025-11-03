@@ -46,6 +46,7 @@ py-xiaozhi is a Python-based Xiaozhi voice client, designed to learn coding and 
 - **Visual Multimodal**: Supports image recognition and processing, providing multimodal interaction capabilities and image content understanding
 - **Intelligent Wake-up**: Supports multiple wake word activation for hands-free interaction (configurable)
 - **Continuous Dialogue Mode**: Implements seamless conversation experience, enhancing user interaction fluidity
+- **YOLO Face Detection**: Integrated YOLO deep learning model for high-precision face detection and focus analysis with real-time user status monitoring. Analyzes face position, size, and angle to determine user focus, providing more accurate learning status monitoring
 
 ### 🔧 MCP Tools Ecosystem
 
@@ -57,6 +58,7 @@ py-xiaozhi is a Python-based Xiaozhi voice client, designed to learn coding and 
 - **Recipe Tools**: Rich recipe database with search, category browsing, and intelligent recommendations
 - **Map Tools**: Amap services with geocoding, route planning, nearby search, and weather queries
 - **Camera Tools**: Image capture and AI analysis with photo recognition and intelligent Q&A
+- **YOLO Vision Analysis**: Face detection and focus monitoring based on YOLO model for learning efficiency evaluation and user status perception. Supports training custom models to improve detection accuracy and adapt to different usage scenarios
 
 ### 🎵 Advanced Audio Processing
 
@@ -116,6 +118,7 @@ py-xiaozhi is a Python-based Xiaozhi voice client, designed to learn coding and 
 
 - **Voice Wake-up**: Requires downloading Sherpa-ONNX speech recognition models
 - **Camera Features**: Requires camera device and OpenCV support
+- **YOLO Face Detection**: Requires installing YOLO-related dependencies for improved face detection accuracy
 
 ## Read This First
 
@@ -123,6 +126,47 @@ py-xiaozhi is a Python-based Xiaozhi voice client, designed to learn coding and 
 - The main branch has the latest code; manually reinstall pip dependencies after each update to ensure you have new dependencies
 
 [Zero to Xiaozhi Client (Video Tutorial)](https://www.bilibili.com/video/BV1dWQhYEEmq/?vd_source=2065ec11f7577e7107a55bbdc3d12fce)
+
+## YOLOv8 Face Detection Enhanced Features
+
+To improve the accuracy of focus monitoring, the project integrates an advanced YOLOv8 face detection model. This model can more accurately identify face position, size, and angle, thus more accurately judging the user's focus status.
+
+### Features
+
+- **High-Precision Detection**: Uses a specially trained YOLOv8 face detection model
+- **Real-Time Monitoring**: Supports real-time face detection and focus analysis
+- **GPU Acceleration**: Supports CUDA GPU acceleration to improve detection speed
+- **Multiple State Recognition**:
+  - `focused`: Face detected and located in the center area of the frame with reasonable size and angle
+  - `distracted`: Face detected but position deviates from center or angle is abnormal
+  - `absent`: No face detected
+  - `blocked`: Camera blocked or frame too dark
+
+### Model Training
+
+The project provides complete model training scripts that support training with custom datasets:
+
+1. Prepare annotated face dataset (YOLO format)
+2. Use the [train_yolo_face.py](train_yolo_face.py) script for model training
+3. Supports GPU-accelerated training to significantly improve training speed
+4. Uses `yolov8n.pt` as the default pre-trained model
+
+### Model Testing
+
+Provides test scripts to verify model performance:
+
+1. Use the [test_yolo_face.py](test_yolo_face.py) script to test the trained model
+2. Supports image file and real-time camera testing
+3. Supports GPU-accelerated inference
+
+### Face Focus Determination Logic
+
+The system determines user focus status based on the following factors:
+
+- Face position: Whether it is located in the center area of the frame
+- Size ratio: The ratio of face size to expected size
+- Aspect ratio: Determine if the face is front-facing
+- Lighting conditions: Detect if the frame is too dark or blocked
 
 ## Technical Architecture
 
@@ -182,6 +226,9 @@ py-xiaozhi/
 │   │   ├── mcp_server.py      # MCP server
 │   │   └── tools/             # Various tool modules
 │   ├── protocols/              # Communication protocols
+│   ├── study/                  # Study and focus modules
+│   │   ├── face.py            # Face focus monitor (supports Haar Cascade and YOLO)
+│   │   └── tomato.py          # Pomodoro timer
 │   ├── utils/                  # Utility functions
 │   └── views/                  # UI view components
 ├── libs/                       # Third-party native libraries
@@ -206,6 +253,44 @@ cd py-xiaozhi
 # Install dependencies
 pip install -r requirements.txt
 
+# Install YOLOv8 for advanced computer vision capabilities
+pip install ultralytics
+
+# Download the specialized face detection model (recommended)
+# Method 1: Direct download from Ultralytics documentation
+# Visit https://docs.ultralytics.com/models/yolov8/#face-models and download yolov8n-face.pt
+
+# Method 2: Using wget (Linux/Mac) or curl (Windows)
+# Linux/Mac:
+wget https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n-face.pt -P models/
+
+# Windows (PowerShell):
+curl -L https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n-face.pt -o models/yolov8n-face.pt
+
+# Method 3: Using Python script
+python -c "
+import requests
+import os
+url = 'https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n-face.pt'
+os.makedirs('models', exist_ok=True)
+response = requests.get(url)
+with open('models/yolov8n-face.pt', 'wb') as f:
+    f.write(response.content)
+print('YOLO face model downloaded successfully!')
+"
+
+# Verify installation and model
+python -c "
+from ultralytics import YOLO
+import os
+model_path = 'models/yolov8n-face.pt'
+if os.path.exists(model_path):
+    model = YOLO(model_path)
+    print('YOLO model loaded successfully!')
+else:
+    print(f'Model not found at {model_path}. Please check the path.')
+"
+
 # Code formatting
 ./format_code.sh
 
@@ -224,8 +309,8 @@ python main.py --protocol mqtt       # MQTT protocol
 
 - **Async First**: Use `async/await` syntax, avoid blocking operations
 - **Error Handling**: Complete exception handling and logging
-- **Configuration Management**: Use `ConfigManager` for unified configuration access
-- **Test-Driven**: Write unit tests to ensure code quality
+- **Configuration Management**: Use `ConfigManager` unified configuration access
+- **Test Driven**: Write unit tests to ensure code quality
 
 ### Extension Development
 
@@ -280,4 +365,3 @@ python main.py --protocol mqtt       # MQTT protocol
     <img src="https://img.shields.io/badge/Become-Sponsor-orange?style=for-the-badge&logo=heart" alt="Become a Sponsor">
   </a>
 </div>
-

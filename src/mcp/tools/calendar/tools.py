@@ -94,11 +94,18 @@ async def get_events_by_date(args: Dict[str, Any]) -> str:
     """
     try:
         date_type = args.get("date_type", "today")  # today, tomorrow, week, month
+        specific_date = args.get("specific_date")   # 支持查询特定日期
         category = args.get("category")
+        limit = args.get("limit", 50)  # 限制返回结果数量
 
         now = datetime.now()
 
-        if date_type == "today":
+        if specific_date:
+            # 查询特定日期
+            target_date = datetime.fromisoformat(specific_date)
+            start_date = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_date = start_date + timedelta(days=1)
+        elif date_type == "today":
             start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
             end_date = start_date + timedelta(days=1)
         elif date_type == "tomorrow":
@@ -115,53 +122,78 @@ async def get_events_by_date(args: Dict[str, Any]) -> str:
             end_date = start_date + timedelta(days=7)
         elif date_type == "month":
             # 本月
-            start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            start_date = now.replace(
+                day=1, hour=0, minute=0, second=0, microsecond=0
+            )
             if now.month == 12:
                 end_date = start_date.replace(year=now.year + 1, month=1)
             else:
                 end_date = start_date.replace(month=now.month + 1)
         else:
-            # 自定义日期范围
-            start_date = (
-                datetime.fromisoformat(args["start_date"])
-                if args.get("start_date")
-                else None
-            )
-            end_date = (
-                datetime.fromisoformat(args["end_date"])
-                if args.get("end_date")
-                else None
-            )
+            # 默认查询今天
+            start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_date = start_date + timedelta(days=1)
 
+        # 转换为ISO格式字符串
+        start_date_iso = start_date.isoformat()
+        end_date_iso = end_date.isoformat()
+
+        # 查询事件
         manager = get_calendar_manager()
         events = manager.get_events(
-            start_date=start_date.isoformat() if start_date else None,
-            end_date=end_date.isoformat() if end_date else None,
-            category=category,
+            start_date=start_date_iso, end_date=end_date_iso, category=category
         )
 
-        # 格式化输出
-        events_data = []
-        for event in events:
-            event_dict = event.to_dict()
-            # 添加人性化时间显示
-            start_dt = datetime.fromisoformat(event.start_time)
-            end_dt = datetime.fromisoformat(event.end_time)
-            event_dict["display_time"] = (
-                f"{start_dt.strftime('%m/%d %H:%M')} - {end_dt.strftime('%H:%M')}"
-            )
-            events_data.append(event_dict)
+        # 按开始时间排序
+        events.sort(key=lambda x: x.start_time)
+        
+        # 限制返回结果数量
+        if limit and len(events) > limit:
+            events = events[:limit]
+
+        # 转换为字典列表
+        events_dict = [event.to_dict() for event in events]
 
         return json.dumps(
             {
                 "success": True,
-                "date_type": date_type,
-                "total_events": len(events_data),
-                "events": events_data,
+                "count": len(events_dict),
+                "events": events_dict,
+                "date_range": {
+                    "start": start_date_iso,
+                    "end": end_date_iso,
+                    "type": date_type
+                }
             },
             ensure_ascii=False,
             indent=2,
         )
+
+    except Exception as e:
+        logger.error(f"查询日程失败: {e}")
+        return json.dumps(
+            {"success": False, "message": f"查询日程失败: {str(e)}"}, ensure_ascii=False
+        )
+
+
+async def get_event_by_id(args: Dict[str, Any]) -> str:
+    """
+    根据ID查询单个日程.
+    """
+    try:
+        event_id = args["event_id"]
+
+        manager = get_calendar_manager()
+        event = manager.get_event_by_id(event_id)
+
+        if event:
+            return json.dumps(
+                {"success": True, "event": event.to_dict()}, ensure_ascii=False
+            )
+        else:
+            return json.dumps(
+                {"success": False, "message": "未找到指定的日程"}, ensure_ascii=False
+            )
 
     except Exception as e:
         logger.error(f"查询日程失败: {e}")
@@ -176,40 +208,42 @@ async def update_event(args: Dict[str, Any]) -> str:
     """
     try:
         event_id = args["event_id"]
+        update_data = {
+            k: v
+            for k, v in args.items()
+            if k
+            in [
+                "title",
+                "start_time",
+                "end_time",
+                "description",
+                "category",
+                "reminder_minutes",
+            ]
+        }
 
-        # 构建更新字段
-        update_fields = {}
-        for field in [
-            "title",
-            "start_time",
-            "end_time",
-            "description",
-            "category",
-            "reminder_minutes",
-        ]:
-            if field in args:
-                update_fields[field] = args[field]
-
-        if not update_fields:
-            return json.dumps(
-                {"success": False, "message": "没有提供要更新的字段"},
-                ensure_ascii=False,
-            )
+        # 验证时间格式
+        if "start_time" in update_data:
+            datetime.fromisoformat(update_data["start_time"])
+        if "end_time" in update_data:
+            datetime.fromisoformat(update_data["end_time"])
 
         manager = get_calendar_manager()
-        if manager.update_event(event_id, **update_fields):
+        success = manager.update_event(event_id, **update_data)
+
+        if success:
+            updated_event = manager.get_event_by_id(event_id)
             return json.dumps(
                 {
                     "success": True,
                     "message": "日程更新成功",
-                    "updated_fields": list(update_fields.keys()),
+                    "event": updated_event.to_dict() if updated_event else None,
                 },
                 ensure_ascii=False,
             )
         else:
             return json.dumps(
-                {"success": False, "message": "日程更新失败，事件不存在"},
-                ensure_ascii=False,
+                {"success": False, "message": "日程更新失败"}, ensure_ascii=False
             )
 
     except Exception as e:
@@ -227,14 +261,15 @@ async def delete_event(args: Dict[str, Any]) -> str:
         event_id = args["event_id"]
 
         manager = get_calendar_manager()
-        if manager.delete_event(event_id):
+        success = manager.delete_event(event_id)
+
+        if success:
             return json.dumps(
                 {"success": True, "message": "日程删除成功"}, ensure_ascii=False
             )
         else:
             return json.dumps(
-                {"success": False, "message": "日程删除失败，事件不存在"},
-                ensure_ascii=False,
+                {"success": False, "message": "日程删除失败"}, ensure_ascii=False
             )
 
     except Exception as e:
@@ -333,6 +368,7 @@ async def get_upcoming_events(args: Dict[str, Any]) -> str:
     """
     try:
         hours = args.get("hours", 24)  # 默认查询未来24小时
+        limit = args.get("limit", 10)  # 限制返回结果数量
 
         now = datetime.now()
         end_time = now + timedelta(hours=hours)
@@ -341,6 +377,13 @@ async def get_upcoming_events(args: Dict[str, Any]) -> str:
         events = manager.get_events(
             start_date=now.isoformat(), end_date=end_time.isoformat()
         )
+
+        # 按开始时间排序
+        events.sort(key=lambda x: x.start_time)
+        
+        # 限制返回结果数量
+        if limit and len(events) > limit:
+            events = events[:limit]
 
         # 计算提醒时间
         upcoming_events = []
@@ -351,23 +394,27 @@ async def get_upcoming_events(args: Dict[str, Any]) -> str:
             # 计算距离开始的时间
             time_until = start_dt - now
             if time_until.total_seconds() > 0:
-                hours_until = int(time_until.total_seconds() // 3600)
-                minutes_until = int((time_until.total_seconds() % 3600) // 60)
+                days = int(time_until.total_seconds() // 86400)
+                hours = int((time_until.total_seconds() % 86400) // 3600)
+                minutes = int((time_until.total_seconds() % 3600) // 60)
 
-                if hours_until > 0:
-                    time_display = f"{hours_until}小时{minutes_until}分钟后"
+                # 更准确的时间描述
+                if days > 0:
+                    time_str = f"{days}天{hours}小时后"
+                elif hours > 0:
+                    time_str = f"{hours}小时{minutes}分钟后"
                 else:
-                    time_display = f"{minutes_until}分钟后"
+                    time_str = f"{minutes}分钟后"
+            else:
+                time_str = "现在"
 
-                event_dict["time_until"] = time_display
-                event_dict["time_until_minutes"] = int(time_until.total_seconds() // 60)
-                upcoming_events.append(event_dict)
+            event_dict["time_until"] = time_str
+            upcoming_events.append(event_dict)
 
         return json.dumps(
             {
                 "success": True,
-                "query_hours": hours,
-                "total_events": len(upcoming_events),
+                "count": len(upcoming_events),
                 "events": upcoming_events,
             },
             ensure_ascii=False,

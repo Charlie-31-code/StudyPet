@@ -45,6 +45,7 @@ py-xiaozhi 是一个使用 Python 实现的小智语音客户端，旨在通过�
 - **视觉多模态**：支持图像识别和处理，提供多模态交互能力，理解图像内容
 - **智能唤醒**：支持多种唤醒词激活交互，免去手动操作的烦恼（可配置开启）
 - **自动对话模式**：实现连续对话体验，提升用户交互流畅度
+- **YOLO人脸检测**：集成YOLO深度学习模型，实现高精度人脸检测与专注度分析，支持实时监控用户状态。通过分析人脸位置、尺寸和角度来判断用户是否专注，提供更准确的学习状态监测
 
 ### 🔧 MCP工具生态系统
 
@@ -58,6 +59,7 @@ py-xiaozhi 是一个使用 Python 实现的小智语音客户端，旨在通过�
 - **地图工具**：高德地图服务，支持地理编码、路径规划、周边搜索、天气查询
 - **八字命理工具**：传统八字命理分析，支持八字计算、婚姻分析、黄历查询
 - **摄像头工具**：图像捕获和AI分析，支持拍照识别和智能问答
+- **YOLO视觉分析**：基于YOLO模型的人脸检测与专注度监控，用于学习效率评估和用户状态感知。支持训练自定义模型以提高检测准确性和适应不同使用场景
 
 ### 🏠 IoT设备集成
 
@@ -98,11 +100,52 @@ py-xiaozhi 是一个使用 Python 实现的小智语音客户端，旨在通过�
 
 ### 🔧 开发友好
 
-- **模块化架构**：清晰的代码结构和职责分离，便于二次开发
-- **异步优先**：基于asyncio的事件驱动架构，高性能并发处理
-- **配置管理**：分层配置系统，支持点记法访问和动态更新
-- **日志系统**：完整的日志记录和调试支持
+- **模块化架构**：代码结构清晰，职责分离明确，便于二次开发
+- **异步优先**：基于asyncio的事件驱动架构，支持高性能并发处理
+- **配置管理**：分层配置系统，支持点号访问和动态更新
+- **日志系统**：完善的日志记录和调试支持
 - **API文档**：详细的代码文档和使用指南
+
+## YOLOv8 人脸检测增强功能
+
+为了提高专注度监测的准确性，项目集成了先进的YOLOv8人脸检测模型。此模型能够更精确地识别人脸位置、尺寸和角度，从而更准确地判断用户的专注状态。
+
+### 特性
+
+- **高精度检测**：使用专门训练的YOLOv8人脸检测模型
+- **实时监控**：支持实时人脸检测和专注度分析
+- **GPU加速**：支持CUDA GPU加速，提高检测速度
+- **多种状态识别**：
+  - `focused`（专注）：检测到人脸且位于画面中心区域，尺寸和角度合理
+  - `distracted`（分心）：检测到人脸但位置偏离中心或角度异常
+  - `absent`（缺席）：未检测到人脸
+  - `blocked`（遮挡）：摄像头被遮挡或画面过暗
+
+### 模型训练
+
+项目提供了完整的模型训练脚本，支持自定义数据集训练：
+
+1. 准备标注好的人脸数据集（YOLO格式）
+2. 使用[train_yolo_face.py](train_yolo_face.py)脚本进行模型训练
+3. 支持GPU加速训练，显著提高训练速度
+4. 默认使用`yolov8n.pt`作为预训练模型
+
+### 模型测试
+
+提供测试脚本验证模型性能：
+
+1. 使用[test_yolo_face.py](test_yolo_face.py)脚本测试训练好的模型
+2. 支持图像文件和实时摄像头测试
+3. 支持GPU加速推理
+
+### 人脸专注度判定逻辑
+
+系统根据以下因素判断用户专注状态：
+
+- 人脸位置：是否位于画面中心区域
+- 尺寸比例：人脸大小与预期大小的比值
+- 宽高比：判断人脸是否为正面朝向
+- 光照条件：检测画面是否过暗或被遮挡
 
 ## 系统要求
 
@@ -124,6 +167,7 @@ py-xiaozhi 是一个使用 Python 实现的小智语音客户端，旨在通过�
 
 - **语音唤醒**：需要下载Sherpa-ONNX语音识别模型
 - **摄像头功能**：需要摄像头设备和OpenCV支持
+- **YOLO人脸检测**：需要安装YOLO相关依赖（ultralytics）以实现高精度人脸检测和专注度分析
 
 ## 请先看这里
 
@@ -190,6 +234,9 @@ py-xiaozhi/
 │   │   ├── mcp_server.py      # MCP服务器
 │   │   └── tools/             # 各种工具模块
 │   ├── protocols/              # 通信协议
+│   ├── study/                  # 学习专注功能模块
+│   │   ├── face.py            # 人脸专注度监控（支持Haar Cascade和YOLO）
+│   │   └── tomato.py          # 番茄工作法计时器
 │   ├── utils/                  # 工具函数
 │   └── views/                  # UI视图组件
 ├── libs/                       # 第三方原生库
@@ -214,6 +261,18 @@ cd py-xiaozhi
 # 安装依赖
 pip install -r requirements.txt
 
+# 安装YOLO依赖以启用高级视觉功能（人脸检测、专注度分析）
+pip install ultralytics
+
+# 下载并配置专用的人脸检测模型:
+# 1. 从官方文档页面下载优化的人脸检测模型:
+#    https://docs.ultralytics.com/models/yolov8/#face-models
+# 2. 推荐下载 yolov8n-face.pt 模型文件（轻量级且适合实时检测）
+# 3. 将下载的模型文件放置在项目根目录的 models 目录中
+# 4. 如果models目录不存在，请先创建: mkdir models
+# 5. 模型将自动被src/study/face.py模块加载使用
+# 6. 首次运行时，程序会自动检测模型文件并初始化YOLO人脸检测器
+
 # 代码格式化
 ./format_code.sh
 
@@ -226,6 +285,34 @@ python main.py --mode cli
 # 指定通信协议
 python main.py --protocol websocket  # WebSocket（默认）
 python main.py --protocol mqtt       # MQTT协议
+```
+
+### 训练自定义YOLOv8人脸检测模型
+
+项目提供了训练和测试自定义人脸检测模型的工具，以提高专注度监测的准确性：
+
+```bash
+# 1. 准备训练数据（确保数据按照YOLO格式组织）
+#    数据目录结构应如下：
+#    models/face_data/
+#    ├── images/
+#    │   ├── train/
+#    │   └── val/
+#    └── labels/
+#        ├── train/
+#        └── val/
+
+# 2. 训练模型（支持GPU加速）
+python train_yolo_face.py --epochs 100 --batch 16 --device 0
+
+# 3. 测试模型（支持GPU加速）
+python test_yolo_face.py --model runs/detect/face_model/weights/best.pt --image path/to/test/image.jpg --device 0
+
+# 4. 实时摄像头测试
+python test_yolo_face.py --model runs/detect/face_model/weights/best.pt --webcam --device 0
+
+# 5. 评估模型性能
+python test_yolo_face.py --model runs/detect/face_model/weights/best.pt --eval --device 0
 ```
 
 ### 核心开发模式
@@ -270,7 +357,7 @@ python main.py --protocol mqtt       # MQTT协议
 
 ### 感谢以下开源人员
 >
-> 排名不分前后
+> 排名不分先后
 
 [Xiaoxia](https://github.com/78)
 [zhh827](https://github.com/zhh827)
@@ -287,14 +374,14 @@ python main.py --protocol mqtt       # MQTT协议
 ### 赞助支持
 
 <div align="center">
-  <h3>感谢所有赞助者的支持 ❤️</h3>
-  <p>无论是接口资源、设备兼容测试还是资金支持，每一份帮助都让项目更加完善</p>
+  <h3>感谢所有赞助者 ❤️</h3>
+  <p>无论是API资源、设备兼容性测试还是资金支持，每一份贡献都让项目更加完善</p>
   
   <a href="https://huangjunsen0406.github.io/py-xiaozhi/sponsors/" target="_blank">
-    <img src="https://img.shields.io/badge/查看-赞助者名单-brightgreen?style=for-the-badge&logo=github" alt="赞助者名单">
+    <img src="https://img.shields.io/badge/查看-赞助者-brightgreen?style=for-the-badge&logo=github" alt="查看赞助者">
   </a>
   <a href="https://huangjunsen0406.github.io/py-xiaozhi/sponsors/" target="_blank">
-    <img src="https://img.shields.io/badge/成为-项目赞助者-orange?style=for-the-badge&logo=heart" alt="成为赞助者">
+    <img src="https://img.shields.io/badge/成为-赞助者-orange?style=for-the-badge&logo=heart" alt="成为赞助者">
   </a>
 </div>
 
