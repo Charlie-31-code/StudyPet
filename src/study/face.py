@@ -50,6 +50,12 @@ class FaceMonitor:
     - on_frame(frame: np.ndarray) 每帧回调（UI 可用于显示小窗口），非必须
     """
 
+        check_interval: int = 1,
+>>>>>>> 7f8e5d1ad7265a58d8747a12beb8b4b610fb10a7
+    on_status: Optional[Callable[[str, int], None]] = None,
+    on_frame: Optional[Callable[[object], None]] = None,
+        show_window: bool = False,
+    ):
     def __init__(
         self,
         camera_index: int = 0,
@@ -57,6 +63,13 @@ class FaceMonitor:
         detection_method: DetectionMethod = DetectionMethod.HAAR_CASCADE,
         yolo_model_path: str = "yolov8n-face.pt",  # 使用专门的人脸检测模型
         yolo_device: str = "0" if YOLO_AVAILABLE else "cpu",  # 使用GPU加速推理
+        on_status: Optional[Callable[[str, int], None]] = None,
+        on_frame: Optional[Callable[[object], None]] = None,
+        show_window: bool = False,
+    ):
+=======
+        check_interval: int = 1,
+>>>>>>> 7f8e5d1ad7265a58d8747a12beb8b4b610fb10a7
     on_status: Optional[Callable[[str, int], None]] = None,
     on_frame: Optional[Callable[[object], None]] = None,
         show_window: bool = False,
@@ -116,6 +129,16 @@ class FaceMonitor:
 
         self._last_decision = None
         self._last_check_time = 0.0
+
+        # 连续性平滑（防止单帧噪声导致误判）
+        # 记录每种状态的连续帧计数
+        self._streaks = {"focused": 0, "distracted": 0, "absent": 0, "blocked": 0}
+        # 需要连续多少次才认为状态已稳定（可调）
+        # 将 absent 的阈值适当提高，避免短暂低头/遮挡被误判为离开
+        self._streak_thresholds = {"focused": 1, "distracted": 3, "absent": 3, "blocked": 2}
+
+        # 记录上次检测到人脸的时间，用于短时内优先判定为 distracted（避免误报 absent）
+        self._last_face_seen_ts: Optional[float] = None
 
         # 摄像头对象按需创建
         self._cap = None
@@ -247,17 +270,43 @@ class FaceMonitor:
         try:
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-            # 检测摄像头是否被遮挡或画面过暗（均值过低）
+            # 画面亮度与纹理统计，用于区分被遮挡(blocked)与无人(absent)
             mean_brightness = float(gray.mean())
-            if mean_brightness < 18:
-                # 画面非常暗，可能被遮挡
+            std_brightness = float(gray.std())
+
+            # 计算边缘数量（Canny）与拉普拉斯方差（纹理）以判断画面是否为单色块或被遮挡
+            try:
+                edges = cv2.Canny(gray, 50, 150)
+                edge_count = int((edges > 0).sum())
+            except Exception:
+                edge_count = 0
+
+            try:
+                lap = cv2.Laplacian(gray, cv2.CV_64F)
+                lap_var = float(lap.var())
+            except Exception:
+                lap_var = 0.0
+
+            # 被遮挡/画面为单色/过暗的判定条件（更鲁棒且更灵敏）：
+            # - 平均亮度较低且亮度方差较小；或
+            # - 边缘数量较少且拉普拉斯方差低（表示画面无细节）
+            # 这些阈值经过放宽以便更早检测到部分遮挡或手掌遮挡等情况。
+            if (mean_brightness < 90 and std_brightness < 35) or (edge_count < 200 and lap_var < 40.0):
                 return "blocked"
 
-            # 更灵敏的检测参数（降低 minSize、减小 scaleFactor）
+            # 更灵敏的检测参数（降低 minSize、减小 scaleFactor）用于检测人脸
             faces = self.face_cascade.detectMultiScale(
                 gray, scaleFactor=1.05, minNeighbors=3, minSize=(40, 40)
             )
             if len(faces) == 0:
+                # 如果最近短时间内（例如 4 秒内）曾检测到人脸，说明可能是短时偏头或遮挡，
+                # 在这种情况下优先判为 distracted 而不是直接 absent，从而减少误报。
+                try:
+                    now_ts = time.time()
+                    if self._last_face_seen_ts and (now_ts - self._last_face_seen_ts) < 4.0:
+                        return "distracted"
+                except Exception:
+                    pass
                 return "absent"
 
             # 检测是否能检测到眼睛（简单视为正脸/专注）
@@ -267,6 +316,11 @@ class FaceMonitor:
                     roi_gray, scaleFactor=1.05, minNeighbors=3, minSize=(10, 10)
                 )
                 if len(eyes) >= 1:
+                    # 记录最近检测到人脸的时间
+                    try:
+                        self._last_face_seen_ts = time.time()
+                    except Exception:
+                        pass
                     return "focused"
             # 有脸但没检测到眼睛 -> 可能分心或侧脸
             return "distracted"
@@ -385,21 +439,39 @@ class FaceMonitor:
             return self._analyze_frame_haar(frame)
 
     def _apply_status(self, status: str):
-        # 根据状态调整分数
+        # 状态平滑：使用连续计数(streaks)来判断状态是否稳定，避免单帧噪声导致误判。
+        try:
+            # 更新各状态的连续计数
+            for k in self._streaks.keys():
+                if k == status:
+                    self._streaks[k] += 1
+                else:
+                    self._streaks[k] = 0
+
+            # 判断是否满足稳定阈值
+            if self._streaks.get(status, 0) >= self._streak_thresholds.get(status, 1):
+                eff_status = status
+            else:
+                # 当尚未达到阈值时，保留上一次的决策（若存在），否则暂时使用当前原始状态
+                eff_status = self._last_decision if self._last_decision is not None else status
+        except Exception:
+            eff_status = status
+
+        # 根据最终决定的状态调整分数与统计
         old = self.score
-        # 统计次数
+        # 统计次数只在使用了有效决策时计入
         self._total_checks += 1
 
-        if status == "focused":
+        if eff_status == "focused":
             # 专注时缓慢提升
             self.score = min(100, self.score + 2)
             self._focused_count += 1
             # 回到专注后重置分心计数
             self._distracted_count = 0
-        elif status == "distracted":
+        elif eff_status == "distracted":
             self.score = max(0, self.score - 3)
             self._distracted_count += 1
-        elif status == "blocked":
+        elif eff_status == "blocked":
             # 摄像头被遮挡，较大幅度下降
             self.score = max(0, self.score - 8)
             self._blocked_count += 1
@@ -413,20 +485,15 @@ class FaceMonitor:
         except Exception:
             pass
 
-        # 回调（始终回调状态）
+        # 回调（始终回调最终决定的状态）
         try:
             if self.on_status:
-                self.on_status(status, self.score)
+                self.on_status(eff_status, self.score)
         except Exception:
             pass
 
-        # 提醒策略已由 UI 层统一控制。为了避免在番茄计时过程中重复打断用户，
-        # FaceMonitor 不再在检测循环中直接触发语音提醒。
-        # 如果需要在外部触发一次性提醒（例如开始/结束时），请由 UI 插件
-        # 使用配置的语音风格调用 play_audio_personalized。
-
         # 专注时可以触发正向反馈（例如 UI 切换到开心表情），由回调处理
-        self._last_decision = status
+        self._last_decision = eff_status
 
     def get_score(self) -> int:
         return int(self.score)

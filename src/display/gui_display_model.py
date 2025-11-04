@@ -153,15 +153,53 @@ class GuiDisplayModel(QObject):
     studyTimerTextChanged = pyqtSignal()
     studyProgressChanged = pyqtSignal()
     petStateChanged = pyqtSignal()
+    studySessionActiveChanged = pyqtSignal()
     # 小人脸图像（data URL）
     faceImageChanged = pyqtSignal()
+    # 可配置的番茄计时属性
+    studyMinutesChanged = pyqtSignal()
+    breakMinutesChanged = pyqtSignal()
+    presetChanged = pyqtSignal()
+    longBreakMinutesChanged = pyqtSignal()
+    cyclesBeforeLongChanged = pyqtSignal()
 
     def _init_study_props(self):
         self._study_mode_active = False
+        self._study_session_active = False
         self._study_timer_text = "25:00"
         self._study_progress = 0  # 0-100
         self._pet_state = "idle"  # idle/studying/distracted
         self._face_image = ""
+        # 可配置项的默认值（可由 UI 修改）
+        try:
+            from src.utils.config_manager import ConfigManager
+            cfg = ConfigManager.get_instance()
+            preset = (cfg.get_config("TOMATO.preset", "default") or "default")
+            self._preset = preset
+            self._study_minutes = int(cfg.get_config("TOMATO.study_minutes", 25) or 25)
+            self._break_minutes = int(cfg.get_config("TOMATO.break_minutes", 5) or 5)
+            self._long_break_minutes = int(cfg.get_config("TOMATO.long_break_minutes", 15) or 15)
+            self._cycles_before_long = int(cfg.get_config("TOMATO.cycles_before_long", 4) or 4)
+        except Exception:
+            self._preset = "default"
+            self._study_minutes = 25
+            self._break_minutes = 5
+            self._long_break_minutes = 15
+            self._cycles_before_long = 4
+
+    @pyqtProperty(bool, notify=studySessionActiveChanged)
+    def studySessionActive(self):
+        try:
+            return self._study_session_active
+        except AttributeError:
+            self._init_study_props()
+            return self._study_session_active
+
+    @studySessionActive.setter
+    def studySessionActive(self, value: bool):
+        if getattr(self, "_study_session_active", False) != value:
+            self._study_session_active = bool(value)
+            self.studySessionActiveChanged.emit()
 
     @pyqtProperty(bool, notify=studyModeActiveChanged)
     def studyModeActive(self):
@@ -232,4 +270,91 @@ class GuiDisplayModel(QObject):
         if getattr(self, "_face_image", "") != value:
             self._face_image = value
             self.faceImageChanged.emit()
+
+    # --------- 可配置番茄计时属性的访问器 ---------
+    @pyqtProperty(int, notify=studyMinutesChanged)
+    def studyMinutes(self):
+        try:
+            return self._study_minutes
+        except AttributeError:
+            self._init_study_props()
+            return self._study_minutes
+
+    @studyMinutes.setter
+    def studyMinutes(self, value: int):
+        try:
+            v = int(value)
+        except Exception:
+            return
+        if getattr(self, "_study_minutes", None) != v:
+            self._study_minutes = v
+            self.studyMinutesChanged.emit()
+
+    @pyqtProperty(int, notify=breakMinutesChanged)
+    def breakMinutes(self):
+        try:
+            return self._break_minutes
+        except AttributeError:
+            self._init_study_props()
+            return self._break_minutes
+
+    @breakMinutes.setter
+    def breakMinutes(self, value: int):
+        try:
+            v = int(value)
+        except Exception:
+            return
+        if getattr(self, "_break_minutes", None) != v:
+            self._break_minutes = v
+            self.breakMinutesChanged.emit()
+
+    @pyqtProperty(str, notify=presetChanged)
+    def preset(self):
+        try:
+            return self._preset
+        except AttributeError:
+            self._init_study_props()
+            return self._preset
+
+    @preset.setter
+    def preset(self, value: str):
+        if getattr(self, "_preset", "") != value:
+            self._preset = str(value)
+            self.presetChanged.emit()
+
+    @pyqtProperty(int, notify=longBreakMinutesChanged)
+    def longBreakMinutes(self):
+        try:
+            return self._long_break_minutes
+        except AttributeError:
+            self._init_study_props()
+            return self._long_break_minutes
+
+    @longBreakMinutes.setter
+    def longBreakMinutes(self, value: int):
+        try:
+            v = int(value)
+        except Exception:
+            return
+        if getattr(self, "_long_break_minutes", None) != v:
+            self._long_break_minutes = v
+            self.longBreakMinutesChanged.emit()
+
+    @pyqtProperty(int, notify=cyclesBeforeLongChanged)
+    def cyclesBeforeLong(self):
+        try:
+            return self._cycles_before_long
+        except AttributeError:
+            self._init_study_props()
+            return self._cycles_before_long
+
+    @cyclesBeforeLong.setter
+    def cyclesBeforeLong(self, value: int):
+        try:
+            v = int(value)
+        except Exception:
+            return
+        if getattr(self, "_cycles_before_long", None) != v:
+            self._cycles_before_long = v
+            self.cyclesBeforeLongChanged.emit()
 
