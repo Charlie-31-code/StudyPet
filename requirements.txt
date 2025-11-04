@@ -39,7 +39,9 @@ packaging==25.0
 requests==2.32.3
 
 # YOLO相关依赖（可选）
-ultralytics>=8.0.0
+ultralytics==8.3.72
+torch==2.6.0
+torchvision==0.21.0
 
 # 训练和测试模型所需的额外依赖
 matplotlib>=3.5.0

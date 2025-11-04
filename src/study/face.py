@@ -51,7 +51,7 @@ class FaceMonitor:
     """
 
         check_interval: int = 1,
->>>>>>> 7f8e5d1ad7265a58d8747a12beb8b4b610fb10a7
+
     on_status: Optional[Callable[[str, int], None]] = None,
     on_frame: Optional[Callable[[object], None]] = None,
         show_window: bool = False,
@@ -61,15 +61,14 @@ class FaceMonitor:
         camera_index: int = 0,
         check_interval: int = 5,
         detection_method: DetectionMethod = DetectionMethod.HAAR_CASCADE,
-        yolo_model_path: str = "yolov8n-face.pt",  # 使用专门的人脸检测模型
+        yolo_model_path: str = "yolov8n.pt",  # 使用专门的人脸检测模型
         yolo_device: str = "0" if YOLO_AVAILABLE else "cpu",  # 使用GPU加速推理
-        on_status: Optional[Callable[[str, int], None]] = None,
-        on_frame: Optional[Callable[[object], None]] = None,
+    on_status: Optional[Callable[[str, int], None]] = None,
+    on_frame: Optional[Callable[[object], None]] = None,
         show_window: bool = False,
     ):
-=======
+
         check_interval: int = 1,
->>>>>>> 7f8e5d1ad7265a58d8747a12beb8b4b610fb10a7
     on_status: Optional[Callable[[str, int], None]] = None,
     on_frame: Optional[Callable[[object], None]] = None,
         show_window: bool = False,
