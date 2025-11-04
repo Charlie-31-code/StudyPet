@@ -23,7 +23,7 @@ class CalendarReminderService:
         self.db = get_calendar_database()
         self.is_running = False
         self._task: Optional[asyncio.Task] = None
-        self.check_interval = 30  # 检查间隔（秒）
+        self.check_interval = 10  # 缩短检查间隔以提高准确性（从30秒改为10秒）
 
     def _get_application(self):
         """
@@ -107,7 +107,7 @@ class CalendarReminderService:
                     AND start_time > ?
                     ORDER BY reminder_time
                 """,
-                    (now.isoformat(), (now - timedelta(hours=1)).isoformat()),
+                    (now.isoformat(), (now - timedelta(minutes=5)).isoformat()),  # 缩短过期时间窗口以提高准确性
                 )
 
                 pending_reminders = cursor.fetchall()
@@ -141,10 +141,14 @@ class CalendarReminderService:
             time_until = start_dt - now
 
             if time_until.total_seconds() > 0:
-                hours = int(time_until.total_seconds() // 3600)
+                days = int(time_until.total_seconds() // 86400)
+                hours = int((time_until.total_seconds() % 86400) // 3600)
                 minutes = int((time_until.total_seconds() % 3600) // 60)
 
-                if hours > 0:
+                # 更准确的时间描述
+                if days > 0:
+                    time_str = f"{days}天{hours}小时{minutes}分钟后"
+                elif hours > 0:
                     time_str = f"{hours}小时{minutes}分钟后"
                 else:
                     time_str = f"{minutes}分钟后"
@@ -173,7 +177,11 @@ class CalendarReminderService:
             # 获取应用实例并调用TTS方法
             application = self._get_application()
             if application and hasattr(application, "_send_text_tts"):
-                await application._send_text_tts(reminder_json)
+                # 重复播报3次，模仿手机闹钟效果
+                for i in range(3):
+                    await application._send_text_tts(reminder_json)
+                    if i < 2:  # 在重复播报之间稍作停顿
+                        await asyncio.sleep(1)
                 logger.info(f"已发送提醒: {title} ({time_str})")
             else:
                 logger.warning("无法发送提醒：应用实例或TTS方法不可用")
@@ -209,19 +217,54 @@ class CalendarReminderService:
         try:
             with self.db._get_connection() as conn:
                 conn.execute(
-                    """
-                    UPDATE events
-                    SET reminder_sent = 1, updated_at = ?
-                    WHERE id = ?
-                """,
-                    (datetime.now().isoformat(), event_id),
+                    "UPDATE events SET reminder_sent = 1 WHERE id = ?", (event_id,)
                 )
                 conn.commit()
-
-            logger.debug(f"已标记提醒为已发送: {event_id}")
-
+            logger.debug(f"标记事件 {event_id} 的提醒已发送")
         except Exception as e:
-            logger.error(f"标记提醒已发送失败: {e}", exc_info=True)
+            logger.error(f"标记提醒已发送失败: {e}")
+
+    async def reset_reminder_flags_for_future_events(self):
+        """
+        重置未来事件的提醒标志（程序启动时调用）.
+        """
+        try:
+            now = datetime.now().isoformat()
+            with self.db._get_connection() as conn:
+                conn.execute(
+                    """
+                    UPDATE events 
+                    SET reminder_sent = 0 
+                    WHERE start_time > ? 
+                    AND reminder_sent = 1
+                """,
+                    (now,),
+                )
+                conn.commit()
+            logger.info("已重置未来事件的提醒标志")
+        except Exception as e:
+            logger.error(f"重置提醒标志失败: {e}")
+
+    async def _cleanup_expired_reminders(self):
+        """
+        清理过期事件的提醒标志（保持数据库整洁）.
+        """
+        try:
+            # 查找已过期且已发送提醒的事件（过期超过1小时）
+            expired_threshold = (datetime.now() - timedelta(hours=1)).isoformat()
+            with self.db._get_connection() as conn:
+                conn.execute(
+                    """
+                    UPDATE events 
+                    SET reminder_sent = 0 
+                    WHERE start_time < ? 
+                    AND reminder_sent = 1
+                """,
+                    (expired_threshold,),
+                )
+                conn.commit()
+        except Exception as e:
+            logger.error(f"清理过期提醒失败: {e}")
 
     async def check_daily_events(self):
         """

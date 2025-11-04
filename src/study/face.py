@@ -14,6 +14,7 @@ import threading
 import time
 import logging
 from typing import Callable, Optional
+from enum import Enum
 
 try:
     import cv2
@@ -22,9 +23,23 @@ except Exception:
     cv2 = None  # 在无 cv2 环境下仍可导入模块，但无法启用摄像头
     np = None
 
+# 尝试导入YOLO相关库
+try:
+    from ultralytics import YOLO
+    YOLO_AVAILABLE = True
+except ImportError:
+    YOLO_AVAILABLE = False
+    YOLO = None
+
 from src.utils.common_utils import play_audio_nonblocking
 
 logger = logging.getLogger(__name__)
+
+
+class DetectionMethod(Enum):
+    """人脸检测方法枚举"""
+    HAAR_CASCADE = "haar_cascade"
+    YOLO = "yolo"
 
 
 class FaceMonitor:
@@ -35,9 +50,24 @@ class FaceMonitor:
     - on_frame(frame: np.ndarray) 每帧回调（UI 可用于显示小窗口），非必须
     """
 
+        check_interval: int = 1,
+
+    on_status: Optional[Callable[[str, int], None]] = None,
+    on_frame: Optional[Callable[[object], None]] = None,
+        show_window: bool = False,
+    ):
     def __init__(
         self,
         camera_index: int = 0,
+        check_interval: int = 5,
+        detection_method: DetectionMethod = DetectionMethod.HAAR_CASCADE,
+        yolo_model_path: str = "yolov8n.pt",  # 使用专门的人脸检测模型
+        yolo_device: str = "0" if YOLO_AVAILABLE else "cpu",  # 使用GPU加速推理
+    on_status: Optional[Callable[[str, int], None]] = None,
+    on_frame: Optional[Callable[[object], None]] = None,
+        show_window: bool = False,
+    ):
+
         check_interval: int = 1,
     on_status: Optional[Callable[[str, int], None]] = None,
     on_frame: Optional[Callable[[object], None]] = None,
@@ -45,6 +75,9 @@ class FaceMonitor:
     ):
         self.camera_index = camera_index
         self.check_interval = max(1, int(check_interval))
+        self.detection_method = detection_method
+        self.yolo_model_path = yolo_model_path
+        self.yolo_device = yolo_device  # GPU设备设置
         self.on_status = on_status
         self.on_frame = on_frame
         self.show_window = show_window
@@ -69,6 +102,10 @@ class FaceMonitor:
         # Haar 级联
         self.face_cascade = None
         self.eye_cascade = None
+        
+        # YOLO模型
+        self.yolo_model = None
+        
         if cv2 is not None:
             try:
                 self.face_cascade = cv2.CascadeClassifier(
@@ -79,6 +116,15 @@ class FaceMonitor:
                 )
             except Exception as e:
                 logger.warning(f"加载 Haar 级联失败: {e}")
+
+        # 尝试加载YOLO模型
+        if YOLO_AVAILABLE and self.detection_method == DetectionMethod.YOLO:
+            try:
+                self.yolo_model = YOLO(self.yolo_model_path)
+                logger.info(f"成功加载YOLO模型: {self.yolo_model_path}")
+            except Exception as e:
+                logger.warning(f"加载YOLO模型失败: {e}")
+                self.detection_method = DetectionMethod.HAAR_CASCADE  # 回退到Haar Cascade
 
         self._last_decision = None
         self._last_check_time = 0.0
@@ -105,111 +151,117 @@ class FaceMonitor:
                 return
             try:
                 self._cap = cv2.VideoCapture(self.camera_index)
+                # 设置缓冲区大小为1以减少延迟
+                self._cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                # 添加额外的缓冲区设置以确保最小延迟
+                self._cap.set(cv2.CAP_PROP_FPS, 30)
+
+                # 启动检测线程
+                self._running = True
+                self._thread = threading.Thread(target=self._detect_loop, daemon=True)
+                self._thread.start()
+                logger.info("FaceMonitor 已启动")
             except Exception as e:
-                logger.error(f"打开摄像头失败: {e}")
-                self._cap = None
-            self._running = True
-            self._thread = threading.Thread(target=self._run_loop, daemon=True)
-            self._thread.start()
-            logger.info("FaceMonitor 已启动")
+                logger.error(f"启动摄像头失败: {e}")
+                self._running = False
 
     def start_session(self):
-        """开始一个统计会话，调用于番茄计时开始时"""
+        """开始新的监控会话"""
         self._session_start = time.time()
-        self._session_end = None
         self._distracted_count = 0
         self._absent_count = 0
         self._blocked_count = 0
         self._focused_count = 0
         self._total_checks = 0
         self._score_acc = 0.0
+        self.score = 50
+        logger.info("FaceMonitor 会话已开始")
 
-    def end_session(self) -> dict:
-        """结束当前会话并返回统计报告字典"""
+    def end_session(self):
+        """结束当前会话并返回统计信息"""
         self._session_end = time.time()
-        duration = None
-        if self._session_start and self._session_end:
-            duration = int(self._session_end - self._session_start)
-        avg_score = None
+        
+        # 计算平均分数
+        avg_score = 0
         if self._total_checks > 0:
-            avg_score = float(self._score_acc) / float(self._total_checks)
-        report = {
-            "start_time": self._session_start,
-            "end_time": self._session_end,
-            "duration_seconds": duration,
-            "total_checks": int(self._total_checks),
-            "focused_count": int(self._focused_count),
-            "distracted_count": int(self._distracted_count),
-            "absent_count": int(self._absent_count),
-            "blocked_count": int(self._blocked_count),
+            avg_score = self._score_acc / self._total_checks
+            
+        session_data = {
+            "duration": self._session_end - self._session_start if self._session_start else 0,
             "avg_score": avg_score,
+            "focused_count": self._focused_count,
+            "distracted_count": self._distracted_count,
+            "absent_count": self._absent_count,
+            "blocked_count": self._blocked_count,
+            "total_checks": self._total_checks,
         }
-        return report
+        
+        logger.info(f"FaceMonitor 会话已结束: {session_data}")
+        return session_data
 
     def stop(self):
         with self._lock:
+            if not self._running:
+                return
+            logger.info("正在停止 FaceMonitor...")
             self._running = False
-        if self._thread and self._thread.is_alive():
-            self._thread.join(timeout=2.0)
-        if self._cap:
-            try:
+            if self._thread and self._thread.is_alive():
+                self._thread.join(timeout=2)
+            if self._cap:
                 self._cap.release()
-            except Exception:
-                pass
-            self._cap = None
-        if self.show_window and cv2 is not None:
-            try:
-                cv2.destroyWindow("Face Monitor")
-            except Exception:
-                pass
-        logger.info("FaceMonitor 已停止")
+                self._cap = None
+            logger.info("FaceMonitor 已停止")
 
-    def _run_loop(self):
-        # 采集帧并每 check_interval 做一次决策
-        last_frame = None
+    def _detect_loop(self):
+        """检测主循环"""
         while self._running:
             try:
-                if not self._cap or not self._cap.isOpened():
-                    time.sleep(0.5)
+                if self._cap is None:
+                    logger.warning("摄像头未初始化")
+                    time.sleep(1)
                     continue
-
+                    
                 ret, frame = self._cap.read()
-                if not ret or frame is None:
+                if not ret:
+                    logger.warning("无法从摄像头读取帧")
                     time.sleep(0.1)
                     continue
 
-                last_frame = frame
-
-                # 非阻塞地回调帧（UI 可显示小窗口）
+                current_time = time.time()
+                # 控制检测频率
+                if current_time - self._last_check_time >= self.check_interval:
+                    self._last_check_time = current_time
+                    status = self._analyze_frame(frame)
+                    self._apply_status(status)
+                
+                # 调用帧回调（用于UI显示）
                 if self.on_frame:
                     try:
                         self.on_frame(frame)
-                    except Exception:
-                        pass
-
-                # 显示简单窗口（可选，headless 环境可能无效）
-                if self.show_window and cv2 is not None:
+                    except Exception as e:
+                        logger.error(f"帧回调出错: {e}")
+                        
+                # 可选：显示窗口
+                if self.show_window and frame is not None:
                     try:
-                        disp = cv2.resize(frame, (450, 350))
-                        cv2.imshow("Face Monitor", disp)
+                        cv2.imshow("Face Monitor", frame)
                         cv2.waitKey(1)
-                    except Exception:
-                        pass
-
-                now = time.time()
-                if now - self._last_check_time >= self.check_interval:
-                    self._last_check_time = now
-                    status = self._analyze_frame(last_frame)
-                    self._apply_status(status)
-
-                # short sleep to reduce cpu
-                time.sleep(0.05)
-
+                    except Exception as e:
+                        logger.error(f"显示窗口出错: {e}")
+                        
             except Exception as e:
-                logger.exception(f"FaceMonitor 循环出错: {e}")
-                time.sleep(0.5)
+                logger.error(f"检测循环出错: {e}")
+                time.sleep(0.1)
+                
+        # 清理窗口
+        if self.show_window:
+            try:
+                cv2.destroyAllWindows()
+            except Exception:
+                pass
 
-    def _analyze_frame(self, frame) -> str:
+    def _analyze_frame_haar(self, frame) -> str:
+        """使用Haar Cascade检测人脸和眼睛"""
         # 返回 'focused' | 'distracted' | 'absent' | 'blocked'
         if frame is None or self.face_cascade is None:
             return "absent"
@@ -275,6 +327,116 @@ class FaceMonitor:
             logger.exception(f"人脸分析失败: {e}")
             return "absent"
 
+    def _analyze_frame_yolo(self, frame) -> str:
+        """使用YOLO检测人脸和姿态"""
+        # 返回 'focused' | 'distracted' | 'absent' | 'blocked'
+        if frame is None or self.yolo_model is None:
+            return "absent"
+
+        try:
+            # 检测摄像头是否被遮挡或画面过暗（均值过低）
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            mean_brightness = float(gray.mean())
+            if mean_brightness < 18:
+                # 画面非常暗，可能被遮挡
+                return "blocked"
+
+            # 使用YOLO进行检测，启用GPU加速
+            results = self.yolo_model(frame, verbose=False, device=self.yolo_device)
+            detections = results[0].boxes
+            
+            if detections is None or len(detections) == 0:
+                return "absent"
+            
+            # 检查是否检测到人脸
+            face_detected = False
+            face_center_x, face_center_y = 0, 0
+            face_width, face_height = 0, 0
+            frame_height, frame_width = frame.shape[:2]
+            
+            # 存储所有人脸信息用于进一步分析
+            faces_info = []
+            
+            for box in detections:
+                # 获取检测框坐标
+                x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                conf = box.conf[0].cpu().numpy()
+                cls = int(box.cls[0].cpu().numpy())
+                
+                # 仅考虑置信度较高的检测
+                if conf > 0.5:
+                    # 如果是人脸类（根据模型而定，coco数据集中是0表示person）
+                    if cls == 0:  # person class
+                        face_detected = True
+                        # 计算人脸中心点和尺寸
+                        center_x = (x1 + x2) / 2
+                        center_y = (y1 + y2) / 2
+                        width = x2 - x1
+                        height = y2 - y1
+                        
+                        faces_info.append({
+                            'center_x': center_x,
+                            'center_y': center_y,
+                            'width': width,
+                            'height': height,
+                            'confidence': conf,
+                            'x1': x1,
+                            'y1': y1,
+                            'x2': x2,
+                            'y2': y2
+                        })
+            
+            if not face_detected:
+                return "absent"
+            
+            # 选择置信度最高的人脸进行分析
+            best_face = max(faces_info, key=lambda x: x['confidence'])
+            face_center_x = best_face['center_x']
+            face_center_y = best_face['center_y']
+            face_width = best_face['width']
+            face_height = best_face['height']
+            
+            # 分析人脸位置和尺寸判断专注度
+            # 计算画面中心区域（假设专注时人脸在画面中央区域）
+            center_x_min = frame_width * 0.3
+            center_x_max = frame_width * 0.7
+            center_y_min = frame_height * 0.2
+            center_y_max = frame_height * 0.8
+            
+            # 判断人脸是否在中心区域
+            in_center_area = (center_x_min <= face_center_x <= center_x_max and 
+                             center_y_min <= face_center_y <= center_y_max)
+            
+            # 判断人脸大小（太远或太近都不利于专注）
+            expected_face_width = frame_width * 0.3  # 期望的人脸宽度为画面宽度的30%
+            size_ratio = face_width / expected_face_width
+            
+            # 判断是否正面（通过人脸框的宽高比）
+            aspect_ratio = face_width / face_height if face_height > 0 else 1
+            
+            # 综合判断专注度
+            # 更精细的判断逻辑
+            if in_center_area:
+                if 0.4 <= size_ratio <= 1.6 and 0.5 <= aspect_ratio <= 1.3:
+                    return "focused"
+                else:
+                    # 在中心但尺寸不合适或角度不对
+                    return "distracted"
+            else:
+                # 不在中心区域
+                return "distracted"
+                
+        except Exception as e:
+            logger.exception(f"YOLO人脸分析失败: {e}")
+            return "absent"
+
+    def _analyze_frame(self, frame) -> str:
+        """根据配置的方法分析帧"""
+        if self.detection_method == DetectionMethod.YOLO and YOLO_AVAILABLE and self.yolo_model is not None:
+            return self._analyze_frame_yolo(frame)
+        else:
+            return self._analyze_frame_haar(frame)
+
     def _apply_status(self, status: str):
         # 状态平滑：使用连续计数(streaks)来判断状态是否稳定，避免单帧噪声导致误判。
         try:
@@ -335,5 +497,15 @@ class FaceMonitor:
     def get_score(self) -> int:
         return int(self.score)
 
+    def set_detection_method(self, method: DetectionMethod):
+        """动态设置检测方法"""
+        self.detection_method = method
+        if method == DetectionMethod.YOLO and YOLO_AVAILABLE and self.yolo_model is None:
+            try:
+                self.yolo_model = YOLO(self.yolo_model_path)
+                logger.info(f"成功加载YOLO模型: {self.yolo_model_path}")
+            except Exception as e:
+                logger.warning(f"加载YOLO模型失败: {e}")
+                self.detection_method = DetectionMethod.HAAR_CASCADE
 
-__all__ = ["FaceMonitor"]
+__all__ = ["FaceMonitor", "DetectionMethod"]

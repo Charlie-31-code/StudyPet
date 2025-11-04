@@ -37,3 +37,14 @@ pyinstaller==6.15.0
 rich==14.1.0
 packaging==25.0
 requests==2.32.3
+
+# YOLO相关依赖（可选）
+ultralytics==8.3.72
+torch==2.6.0
+torchvision==0.21.0
+
+# 训练和测试模型所需的额外依赖
+matplotlib>=3.5.0
+seaborn>=0.11.0
+scikit-learn>=1.0.0
+tensorboard>=2.8.0

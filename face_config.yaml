@@ -1,0 +1,7 @@
+# 训练集和验证集路径（保持不变）
+train: ./models/face_data/images/train
+val: ./models/face_data/images/val
+
+# 类别数（4类）和名称（与标注标签对应）
+nc: 4
+names: ["focused", "distracted", "absent", "blocked"]  #专心、分心、缺席、遮挡
