@@ -1,14 +1,6 @@
-<p align="center" class="trendshift">
-  <a href="https://trendshift.io/repositories/14130" target="_blank">
-    <img src="https://trendshift.io/api/badge/repositories/14130" alt="Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/>
-  </a>
-</p>
 <p align="center">
   <a href="https://github.com/huangjunsen0406/py-xiaozhi/releases/latest">
     <img src="https://img.shields.io/github/v/release/huangjunsen0406/py-xiaozhi?style=flat-square&logo=github&color=blue" alt="Release"/>
-  </a>
-  <a href="https://opensource.org/licenses/MIT">
-    <img src="https://img.shields.io/badge/License-MIT-green.svg?style=flat-square" alt="License: MIT"/>
   </a>
   <a href="https://github.com/huangjunsen0406/py-xiaozhi/stargazers">
     <img src="https://img.shields.io/github/stars/huangjunsen0406/py-xiaozhi?style=flat-square&logo=github" alt="Stars"/>
@@ -28,8 +20,7 @@
 
 ## 项目简介
 
-py-xiaozhi 是一个使用 Python 实现的小智语音客户端，旨在通过代码学习和在没有硬件条件下体验 AI 小智的语音功能。
-本仓库是基于[xiaozhi-esp32](https://github.com/78/xiaozhi-esp32)移植
+StudyPet-4 是一个使用 Python 实现的智能学习伴侣，旨在通过AI技术帮助用户提高学习专注度。
 
 ## 演示
 
@@ -53,20 +44,11 @@ py-xiaozhi 是一个使用 Python 实现的小智语音客户端，旨在通过�
 - **日程管理工具**：全功能日程管理，支持创建、查询、更新、删除事件，智能分类和提醒
 - **定时任务工具**：倒计时器功能，支持延时执行MCP工具，多任务并行管理
 - **音乐播放工具**：在线音乐搜索播放，支持播放控制、歌词显示、本地缓存管理
-- **12306查询工具**：12306铁路票务查询，支持车票查询、中转查询、列车路线查询
 - **搜索工具**：网络搜索和网页内容获取，支持必应搜索和智能内容解析
 - **菜谱工具**：丰富菜谱库，支持菜谱搜索、分类查询、智能推荐
-- **地图工具**：高德地图服务，支持地理编码、路径规划、周边搜索、天气查询
-- **八字命理工具**：传统八字命理分析，支持八字计算、婚姻分析、黄历查询
 - **摄像头工具**：图像捕获和AI分析，支持拍照识别和智能问答
 - **YOLO视觉分析**：基于YOLO模型的人脸检测与专注度监控，用于学习效率评估和用户状态感知。支持训练自定义模型以提高检测准确性和适应不同使用场景
 
-### 🏠 IoT设备集成
-
-- **设备管理架构**：基于Thing模式的统一设备管理，支持属性和方法的异步调用
-- **智能家居控制**：支持灯光、音量、温度传感器等设备控制
-- **状态同步机制**：实时状态监控，支持增量更新和并发状态获取
-- **可扩展设计**：模块化设备驱动，易于添加新设备类型
 
 ### 🎵 高级音频处理
 
@@ -211,7 +193,7 @@ py-xiaozhi 是一个使用 Python 实现的小智语音客户端，旨在通过�
 ### 项目结构
 
 ```
-py-xiaozhi/
+StudyPet-4/
 ├── main.py                     # 应用程序主入口（CLI参数处理）
 ├── src/
 │   ├── application.py          # 应用程序核心逻辑
@@ -325,7 +307,6 @@ python test_yolo_face.py --model runs/detect/face_model/weights/best.pt --eval -
 ### 扩展开发
 
 - **添加MCP工具**: 在`src/mcp/tools/`目录创建新工具模块
-- **添加IoT设备**: 继承`Thing`基类实现新设备
 - **添加协议**: 实现`Protocol`抽象基类
 - **添加界面**: 扩展`BaseDisplay`实现新的UI组件
 
@@ -344,51 +325,3 @@ python test_yolo_face.py --model runs/detect/face_model/weights/best.pt --eval -
    +--------- |  SPEAKING  | <-----------------+
      完成播放 +------------+
 ```
-
-## 贡献指南
-
-欢迎提交问题报告和代码贡献。请确保遵循以下规范：
-
-1. 代码风格符合PEP8规范
-2. 提交的PR包含适当的测试
-3. 更新相关文档
-
-## 社区与支持
-
-### 感谢以下开源人员
->
-> 排名不分先后
-
-[Xiaoxia](https://github.com/78)
-[zhh827](https://github.com/zhh827)
-[四博智联-李洪刚](https://github.com/SmartArduino)
-[HonestQiao](https://github.com/HonestQiao)
-[vonweller](https://github.com/vonweller)
-[孙卫公](https://space.bilibili.com/416954647)
-[isamu2025](https://github.com/isamu2025)
-[Rain120](https://github.com/Rain120)
-[kejily](https://github.com/kejily)
-[电波bilibili君](https://space.bilibili.com/119751)
-[赛搏智能](https://shop115087494.m.taobao.com/?refer=https%3A%2F%2Fm.tb.cn%2F&ut_sk=1.WMelxbgDQWkDAJ1Rq9Pn7DCD_21380790_1757337352472.Copy.shop&suid=0E25E948-651D-46E0-8E89-5C8CB03B4F56&shop_navi=shopindex&sourceType=shop&shareUniqueId=33038752403&un=d22c5ceda82844ab8bd7bab98ffeb263&share_crt_v=1&un_site=0&spm=a2159r.13376460.0.0&sp_tk=dkRKUjRKUWo2ZHY%3D&bc_fl_src=share-1041250486811064-2-1&cpp=1&shareurl=true&short_name=h.SaBKVHytsCKIPNS&bxsign=scdGtSe264e_qkFQBh0rXCkF-Mrb_s6t35EnpVBBU5dsrd-J24c-_rn_PhJiXRk0hg2hjGoAm0L7j2UQg27OIH_6gZkbhKDyLziD2cy4pDf8sC3KmqrF55TXP3USZaPTw_-&app=weixin)
-
-### 赞助支持
-
-<div align="center">
-  <h3>感谢所有赞助者 ❤️</h3>
-  <p>无论是API资源、设备兼容性测试还是资金支持，每一份贡献都让项目更加完善</p>
-  
-  <a href="https://huangjunsen0406.github.io/py-xiaozhi/sponsors/" target="_blank">
-    <img src="https://img.shields.io/badge/查看-赞助者-brightgreen?style=for-the-badge&logo=github" alt="查看赞助者">
-  </a>
-  <a href="https://huangjunsen0406.github.io/py-xiaozhi/sponsors/" target="_blank">
-    <img src="https://img.shields.io/badge/成为-赞助者-orange?style=for-the-badge&logo=heart" alt="成为赞助者">
-  </a>
-</div>
-
-## 项目统计
-
-[![Star History Chart](https://api.star-history.com/svg?repos=huangjunsen0406/py-xiaozhi&type=Date)](https://www.star-history.com/#huangjunsen0406/py-xiaozhi&Date)
-
-## 许可证
-
-[MIT License](LICENSE)
