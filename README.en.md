@@ -1,34 +1,10 @@
-# StudyPet-4
-
-<p align="center">
-  <a href="https://github.com/huangjunsen0406/py-xiaozhi/releases/latest">
-    <img src="https://img.shields.io/github/v/release/huangjunsen0406/py-xiaozhi?style=flat-square&logo=github&color=blue" alt="Release"/>
-  </a>
-  <a href="https://github.com/huangjunsen0406/py-xiaozhi/stargazers">
-    <img src="https://img.shields.io/github/stars/huangjunsen0406/py-xiaozhi?style=flat-square&logo=github" alt="Stars"/>
-  </a>
-  <a href="https://github.com/huangjunsen0406/py-xiaozhi/releases/latest">
-    <img src="https://img.shields.io/github/downloads/huangjunsen0406/py-xiaozhi/total?style=flat-square&logo=github&color=52c41a1&maxAge=86400" alt="Download"/>
-  </a>
-  <a href="https://gitee.com/huang-jun-sen/py-xiaozhi">
-    <img src="https://img.shields.io/badge/Gitee-FF5722?style=flat-square&logo=gitee" alt="Gitee"/>
-  </a>
-  <a href="https://huangjunsen0406.github.io/py-xiaozhi/guide/00_%E6%96%87%E6%A1%A3%E7%9B%AE%E5%BD%95.html">
-    <img alt="Usage Docs" src="https://img.shields.io/badge/Usage Docs-View-blue?labelColor=2d2d2d" />
-  </a>
-</p>
+# StudyPet
 
 English | [简体中文](README.md)
 
 ## Project Introduction
 
-StudyPet-4 is a Python-based intelligent learning companion designed to help users improve learning focus through AI technology.
-
-## Demo
-
-- [Bilibili Demo Video](https://www.bilibili.com/video/BV1HmPjeSED2/#reply255921347937)
-
-![Image](./documents/docs/guide/images/系统界面.png)
+StudyPet-4 is a learning companion (partner) designed for college students, based on the [py-xiaozhi](https://github.com/huangjunsen0406/py-xiaozhi) project as a secondary development. This project helps college students improve their learning focus through AI technology, providing voice interaction and visual monitoring functions.
 
 ## Features
 

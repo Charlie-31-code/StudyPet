@@ -1,32 +1,8 @@
-<p align="center">
-  <a href="https://github.com/huangjunsen0406/py-xiaozhi/releases/latest">
-    <img src="https://img.shields.io/github/v/release/huangjunsen0406/py-xiaozhi?style=flat-square&logo=github&color=blue" alt="Release"/>
-  </a>
-  <a href="https://github.com/huangjunsen0406/py-xiaozhi/stargazers">
-    <img src="https://img.shields.io/github/stars/huangjunsen0406/py-xiaozhi?style=flat-square&logo=github" alt="Stars"/>
-  </a>
-  <a href="https://github.com/huangjunsen0406/py-xiaozhi/releases/latest">
-    <img src="https://img.shields.io/github/downloads/huangjunsen0406/py-xiaozhi/total?style=flat-square&logo=github&color=52c41a1&maxAge=86400" alt="Download"/>
-  </a>
-  <a href="https://gitee.com/huang-jun-sen/py-xiaozhi">
-    <img src="https://img.shields.io/badge/Gitee-FF5722?style=flat-square&logo=gitee" alt="Gitee"/>
-  </a>
-  <a href="https://huangjunsen0406.github.io/py-xiaozhi/guide/00_%E6%96%87%E6%A1%A3%E7%9B%AE%E5%BD%95.html">
-    <img alt="使用文档" src="https://img.shields.io/badge/使用文档-点击查看-blue?labelColor=2d2d2d" />
-  </a>
-</p>
-
 简体中文 | [English](README.en.md)
 
 ## 项目简介
 
-StudyPet-4 是一个使用 Python 实现的智能学习伴侣，旨在通过AI技术帮助用户提高学习专注度。
-
-## 演示
-
-- [Bilibili 演示视频](https://www.bilibili.com/video/BV1HmPjeSED2/#reply255921347937)
-
-![Image](./documents/docs/guide/images/系统界面.png)
+StudyPet-4 是一个面向大学生的学习伙伴（搭子），基于 [py-xiaozhi](https://github.com/huangjunsen0406/py-xiaozhi) 项目进行二次开发。该项目通过AI技术帮助大学生提高学习专注度，提供语音交互和视觉监控功能。
 
 ## 功能特点
 
@@ -49,16 +25,6 @@ StudyPet-4 是一个使用 Python 实现的智能学习伴侣，旨在通过AI�
 - **摄像头工具**：图像捕获和AI分析，支持拍照识别和智能问答
 - **YOLO视觉分析**：基于YOLO模型的人脸检测与专注度监控，用于学习效率评估和用户状态感知。支持训练自定义模型以提高检测准确性和适应不同使用场景
 
-
-### 🎵 高级音频处理
-
-- **多级音频处理**：支持Opus编解码、实时重采样
-- **语音活动检测**：VAD检测器实现智能打断，支持语音活动实时监控
-- **唤醒词检测**：基于Sherpa-ONNX的离线语音识别，支持多唤醒词和拼音匹配
-- **音频流管理**：独立输入输出流，支持流重建和错误恢复
-- **音频回声消除**：集成WebRTC音频处理模块，提供高质量的回声消除功能
-- **系统音频录制**：支持系统音频录制，实现音频环回处理
-
 ### 🖥️ 用户界面
 
 - **图形化界面**：基于PyQt5的现代GUI，支持小智表情与文本显示，增强视觉体验
@@ -67,26 +33,6 @@ StudyPet-4 是一个使用 Python 实现的智能学习伴侣，旨在通过AI�
 - **全局快捷键**：支持全局快捷键操作，提升使用便捷性
 - **设置界面**：完整的设置管理界面，支持配置自定义
 
-### 🔒 安全与稳定
-
-- **加密音频传输**：支持WSS协议，保障音频数据的安全性，防止信息泄露
-- **设备激活系统**：支持v1/v2双协议激活，自动处理验证码和设备指纹
-- **错误恢复**：完整的错误处理和恢复机制，支持断线重连
-
-### 🌐 跨平台支持
-
-- **系统兼容**：兼容Windows 10+、macOS 10.15+和Linux系统
-- **协议支持**：支持WebSocket和MQTT双协议通信
-- **多环境部署**：支持GUI和CLI双模式，适应不同部署环境
-- **平台优化**：针对不同平台的音频和系统控制优化
-
-### 🔧 开发友好
-
-- **模块化架构**：代码结构清晰，职责分离明确，便于二次开发
-- **异步优先**：基于asyncio的事件驱动架构，支持高性能并发处理
-- **配置管理**：分层配置系统，支持点号访问和动态更新
-- **日志系统**：完善的日志记录和调试支持
-- **API文档**：详细的代码文档和使用指南
 
 ## YOLOv8 人脸检测增强功能
 
@@ -151,12 +97,6 @@ StudyPet-4 是一个使用 Python 实现的智能学习伴侣，旨在通过AI�
 - **摄像头功能**：需要摄像头设备和OpenCV支持
 - **YOLO人脸检测**：需要安装YOLO相关依赖（ultralytics）以实现高精度人脸检测和专注度分析
 
-## 请先看这里
-
-- 仔细阅读 [项目文档](https://huangjunsen0406.github.io/py-xiaozhi/) 启动教程和文件说明都在里面了
-- main是最新代码，每次更新都需要手动重新安装一次pip依赖防止我新增依赖后你们本地没有
-
-[从零开始使用小智客户端（视频教程）](https://www.bilibili.com/video/BV1dWQhYEEmq/?vd_source=2065ec11f7577e7107a55bbdc3d12fce)
 
 ## 技术架构
 
