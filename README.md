@@ -2,7 +2,7 @@
 
 ## 项目简介
 
-StudyPet-4 是一个面向大学生的学习伙伴（搭子），基于 [py-xiaozhi](https://github.com/huangjunsen0406/py-xiaozhi) 项目进行二次开发。该项目通过AI技术帮助大学生提高学习专注度，提供语音交互和视觉监控功能。
+StudyPet 是一个面向大学生的学习伙伴（搭子），基于 [py-xiaozhi](https://github.com/huangjunsen0406/py-xiaozhi) 项目进行二次开发。该项目通过AI技术帮助大学生提高学习专注度，提供语音交互和视觉监控功能。
 
 ## 功能特点
 
@@ -140,21 +140,25 @@ StudyPet-4/
 │   ├── audio_codecs/           # 音频编解码器
 │   │   ├── aec_processor.py    # 音频回声消除处理器
 │   │   ├── audio_codec.py      # 音频编解码基础类
-│   │   └── system_audio_recorder.py  # 系统音频录制器
 │   ├── audio_processing/       # 音频处理模块
 │   │   ├── vad_detector.py     # 语音活动检测
 │   │   └── wake_word_detect.py # 唤醒词检测
+│   ├── constants/              # 常量定义
 │   ├── core/                   # 核心组件
 │   │   ├── ota.py             # 在线更新模块
 │   │   └── system_initializer.py # 系统初始化器
 │   ├── display/                # 显示界面抽象层
-│   ├── iot/                    # IoT设备管理
-│   │   ├── thing.py           # 设备基类
-│   │   ├── thing_manager.py   # 设备管理器
-│   │   └── things/            # 具体设备实现
 │   ├── mcp/                    # MCP工具系统
 │   │   ├── mcp_server.py      # MCP服务器
 │   │   └── tools/             # 各种工具模块
+│   │       ├── calendar/      # 日历工具
+│   │       ├── camera/        # 摄像头工具
+│   │       ├── music/         # 音乐播放工具
+│   │       ├── screenshot/    # 截图工具
+│   │       ├── system/        # 系统工具
+│   │       └── timer/         # 计时器工具
+│   ├── network/                # 网络通信模块
+│   ├── plugins/                # 插件系统
 │   ├── protocols/              # 通信协议
 │   ├── study/                  # 学习专注功能模块
 │   │   ├── face.py            # 人脸专注度监控（支持Haar Cascade和YOLO）
@@ -162,15 +166,15 @@ StudyPet-4/
 │   ├── utils/                  # 工具函数
 │   └── views/                  # UI视图组件
 ├── libs/                       # 第三方原生库
-│   ├── libopus/               # Opus音频编解码库
-│   ├── webrtc_apm/            # WebRTC音频处理模块
-│   └── SystemAudioRecorder/   # 系统音频录制工具
+│   └── webrtc_apm/            # WebRTC音频处理模块
 ├── config/                     # 配置文件目录
-├── models/                     # 语音模型文件
+├── models/                     # 模型文件目录
+│   ├── yolov8n.pt             # YOLOv8预训练人脸检测模型
+│   └── yolo11n.pt             # YOLO11预训练人脸检测模型
 ├── assets/                     # 静态资源文件
 ├── scripts/                    # 辅助脚本
 ├── requirements.txt            # Python依赖包列表
-└── build.json                  # 构建配置文件
+└── pyproject.toml             # 项目配置文件
 ```
 
 ### 开发环境设置
@@ -186,14 +190,9 @@ pip install -r requirements.txt
 # 安装YOLO依赖以启用高级视觉功能（人脸检测、专注度分析）
 pip install ultralytics
 
-# 下载并配置专用的人脸检测模型:
-# 1. 从官方文档页面下载优化的人脸检测模型:
-#    https://docs.ultralytics.com/models/yolov8/#face-models
-# 2. 推荐下载 yolov8n-face.pt 模型文件（轻量级且适合实时检测）
-# 3. 将下载的模型文件放置在项目根目录的 models 目录中
-# 4. 如果models目录不存在，请先创建: mkdir models
-# 5. 模型将自动被src/study/face.py模块加载使用
-# 6. 首次运行时，程序会自动检测模型文件并初始化YOLO人脸检测器
+# 项目已包含预训练模型文件，可直接使用:
+# - yolov8n.pt: 轻量级YOLOv8模型，适合实时检测
+# - yolo11n.pt: YOLO11模型，提供更高精度检测
 
 # 代码格式化
 ./format_code.sh

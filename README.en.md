@@ -4,7 +4,7 @@ English | [简体中文](README.md)
 
 ## Project Introduction
 
-StudyPet-4 is a learning companion (partner) designed for college students, based on the [py-xiaozhi](https://github.com/huangjunsen0406/py-xiaozhi) project as a secondary development. This project helps college students improve their learning focus through AI technology, providing voice interaction and visual monitoring functions.
+StudyPet is a learning companion (partner) designed for college students, based on the [py-xiaozhi](https://github.com/huangjunsen0406/py-xiaozhi) project as a secondary development. This project helps college students improve their learning focus through AI technology, providing voice interaction and visual monitoring functions.
 
 ## Features
 
@@ -140,10 +140,10 @@ StudyPet-4/
 │   ├── audio_codecs/           # Audio codecs
 │   │   ├── aec_processor.py    # Audio echo cancellation processor
 │   │   ├── audio_codec.py      # Audio codec base class
-│   │   └── system_audio_recorder.py  # System audio recorder
 │   ├── audio_processing/       # Audio processing modules
 │   │   ├── vad_detector.py     # Voice activity detection
 │   │   └── wake_word_detect.py # Wake word detection
+│   ├── constants/              # Constant definitions
 │   ├── core/                   # Core components
 │   │   ├── ota.py             # Over-the-air update module
 │   │   └── system_initializer.py # System initializer
@@ -151,6 +151,14 @@ StudyPet-4/
 │   ├── mcp/                    # MCP tool system
 │   │   ├── mcp_server.py      # MCP server
 │   │   └── tools/             # Various tool modules
+│   │       ├── calendar/      # Calendar tools
+│   │       ├── camera/        # Camera tools
+│   │       ├── music/         # Music player tools
+│   │       ├── screenshot/     # Screenshot tools
+│   │       ├── system/        # System tools
+│   │       └── timer/         # Timer tools
+│   ├── network/                # Network communication module
+│   ├── plugins/                # Plugin system
 │   ├── protocols/              # Communication protocols
 │   ├── study/                  # Study and focus modules
 │   │   ├── face.py            # Face focus monitor (supports Haar Cascade and YOLO)
@@ -158,15 +166,15 @@ StudyPet-4/
 │   ├── utils/                  # Utility functions
 │   └── views/                  # UI view components
 ├── libs/                       # Third-party native libraries
-│   ├── libopus/               # Opus audio codec library
-│   ├── webrtc_apm/            # WebRTC audio processing module
-│   └── SystemAudioRecorder/   # System audio recording tool
+│   └── webrtc_apm/            # WebRTC audio processing module
 ├── config/                     # Configuration file directory
-├── models/                     # Speech model files
+├── models/                     # Model files directory
+│   ├── yolov8n.pt             # YOLOv8 pre-trained face detection model
+│   └── yolo11n.pt             # YOLO11 pre-trained face detection model
 ├── assets/                     # Static resource files
 ├── scripts/                    # Auxiliary scripts
 ├── requirements.txt            # Python dependency package list
-└── build.json                  # Build configuration file
+└── pyproject.toml             # Project configuration file
 ```
 
 ### Development Environment Setup
@@ -182,40 +190,9 @@ pip install -r requirements.txt
 # Install YOLOv8 for advanced computer vision capabilities
 pip install ultralytics
 
-# Download the specialized face detection model (recommended)
-# Method 1: Direct download from Ultralytics documentation
-# Visit https://docs.ultralytics.com/models/yolov8/#face-models and download yolov8n-face.pt
-
-# Method 2: Using wget (Linux/Mac) or curl (Windows)
-# Linux/Mac:
-wget https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n-face.pt -P models/
-
-# Windows (PowerShell):
-curl -L https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n-face.pt -o models/yolov8n-face.pt
-
-# Method 3: Using Python script
-python -c "
-import requests
-import os
-url = 'https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n-face.pt'
-os.makedirs('models', exist_ok=True)
-response = requests.get(url)
-with open('models/yolov8n-face.pt', 'wb') as f:
-    f.write(response.content)
-print('YOLO face model downloaded successfully!')
-"
-
-# Verify installation and model
-python -c "
-from ultralytics import YOLO
-import os
-model_path = 'models/yolov8n-face.pt'
-if os.path.exists(model_path):
-    model = YOLO(model_path)
-    print('YOLO model loaded successfully!')
-else:
-    print(f'Model not found at {model_path}. Please check the path.')
-"
+# The project already includes pre-trained model files:
+# - yolov8n.pt: Lightweight YOLOv8 model suitable for real-time detection
+# - yolo11n.pt: YOLO11 model providing higher accuracy detection
 
 # Code formatting
 ./format_code.sh
