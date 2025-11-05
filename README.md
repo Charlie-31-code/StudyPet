@@ -4,6 +4,8 @@
 
 StudyPet 是一个面向大学生的学习伙伴（搭子），基于 [py-xiaozhi](https://github.com/huangjunsen0406/py-xiaozhi) 项目进行二次开发。该项目通过AI技术帮助大学生提高学习专注度，提供语音交互和视觉监控功能。
 
+本项目是基于 [py-xiaozhi](https://github.com/huangjunsen0406/py-xiaozhi) 的衍生作品，并保持原有的 MIT 许可证。详情请见 [LICENSE](LICENSE) 文件。
+
 ## 功能特点
 
 ### 🎯 核心AI功能
