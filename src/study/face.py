@@ -50,29 +50,29 @@ class FaceMonitor:
     - on_frame(frame: np.ndarray) 每帧回调（UI 可用于显示小窗口），非必须
     """
 
-        check_interval: int = 1,
-
-    on_status: Optional[Callable[[str, int], None]] = None,
-    on_frame: Optional[Callable[[object], None]] = None,
-        show_window: bool = False,
-    ):
     def __init__(
         self,
         camera_index: int = 0,
         check_interval: int = 5,
         detection_method: DetectionMethod = DetectionMethod.HAAR_CASCADE,
-        yolo_model_path: str = "yolov8n.pt",  # 使用专门的人脸检测模型
-        yolo_device: str = "0" if YOLO_AVAILABLE else "cpu",  # 使用GPU加速推理
-    on_status: Optional[Callable[[str, int], None]] = None,
-    on_frame: Optional[Callable[[object], None]] = None,
+        yolo_model_path: str = "yolov8n.pt",
+        yolo_device: str = "0" if YOLO_AVAILABLE else "cpu",
+        on_status: Optional[Callable[[str, int], None]] = None,
+        on_frame: Optional[Callable[[object], None]] = None,
         show_window: bool = False,
     ):
+        """初始化 FaceMonitor.
 
-        check_interval: int = 1,
-    on_status: Optional[Callable[[str, int], None]] = None,
-    on_frame: Optional[Callable[[object], None]] = None,
-        show_window: bool = False,
-    ):
+        参数:
+            camera_index: 摄像头索引
+            check_interval: 检测间隔（秒）
+            detection_method: 使用的检测方法（Haar 或 YOLO）
+            yolo_model_path: YOLO 模型路径（若使用 YOLO）
+            yolo_device: 设备字符串（例如 '0' 或 'cpu'）
+            on_status: 状态回调函数(status: str, score: int)
+            on_frame: 每帧回调(frame: np.ndarray)
+            show_window: 是否显示调试窗口
+        """
         self.camera_index = camera_index
         self.check_interval = max(1, int(check_interval))
         self.detection_method = detection_method
