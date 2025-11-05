@@ -1,3 +1,7 @@
+# Copyright (c) 2024 huangjunsen0406
+# Copyright (c) 2025 StudyPet Team(Mia-au,Charlie-31-code)
+# MIT License
+
 import argparse
 import asyncio
 import signal

@@ -1,3 +1,7 @@
+# Copyright (c) 2024 huangjunsen0406
+# Copyright (c) 2025 StudyPet Team
+# MIT License
+
 import platform
 from collections import deque
 from typing import Any, Dict, Optional

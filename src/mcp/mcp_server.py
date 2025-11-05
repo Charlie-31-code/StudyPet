@@ -1,3 +1,7 @@
+# Copyright (c) 2024 huangjunsen0406
+# Copyright (c) 2025 StudyPet Team
+# MIT License
+
 """
 MCP Server Implementation for Python
 Reference: https://modelcontextprotocol.io/specification/2024-11-05
