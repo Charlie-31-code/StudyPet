@@ -278,7 +278,7 @@ python test_yolo_face.py --model runs/detect/face_model/weights/best.pt --eval -
 
 本项目基于 [py-xiaozhi](https://github.com/huangjunsen0406/py-xiaozhi) 项目进行二次开发，并采用 MIT 许可证。
 
-版权所有 (c) 2024 huangjunsen0406
+版权所有 (c) 2025 Junsen
 版权所有 (c) 2025 StudyPet Team(Mia-au,Charlie-31-code,Xenia-www,Sylvia0601)
 
 特此免费授予任何获得本软件及相关文档文件（以下简称"软件"）副本的人使用、复制、修改、合并、发布、分发、再许可和/或销售软件副本的权利，以及允许软件提供者这样做，但须符合以下条件：
