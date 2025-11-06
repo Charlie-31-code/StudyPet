@@ -1,4 +1,4 @@
-# Copyright (c) 2025 StudyPet Team(Mia-au,Charlie-31-code,Xenia-www,Sylvia0601)
+# Copyright (c) 2025 StudyPet Team(Charlie-31-code,Mia-au,Xenia-www,Sylvia0601)
 # MIT License
 
 """简易人脸专注度监控模块

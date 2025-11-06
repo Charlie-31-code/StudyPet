@@ -4,7 +4,12 @@
 
 StudyPet 是一个面向大学生的学习伙伴（搭子），基于 [py-xiaozhi](https://github.com/huangjunsen0406/py-xiaozhi) 项目进行二次开发。该项目通过AI技术帮助大学生提高学习专注度，提供语音交互和视觉监控功能。
 
-本项目基于 [py-xiaozhi](https://github.com/huangjunsen0406/py-xiaozhi) 进行二次开发，继承其 **MIT 许可证**，原项目版权归 huangjunsen0406 所有。二次开发部分的版权归 StudyPet 开发团队所有。
+本项目基于 [py-xiaozhi](https://github.com/huangjunsen0406/py-xiaozhi) 进行二次开发，继承其 **MIT 许可证**。根据 MIT 许可证的规定：
+
+- 原项目版权归 Junsen 所有
+- 二次开发中新添加的代码和功能归 StudyPet Team(Charlie-31-code,Mia-au,Xenia-www,Sylvia0601) 所有
+- 对原项目代码的修改部分由原作者和二次开发团队共同拥有版权
+
 
 ## 功能特点
 
@@ -275,6 +280,7 @@ python test_yolo_face.py --model runs/detect/face_model/weights/best.pt --eval -
 
 版权所有 (c) 2024 huangjunsen0406
 版权所有 (c) 2025 StudyPet Team(Mia-au,Charlie-31-code,Xenia-www,Sylvia0601)
+
 特此免费授予任何获得本软件及相关文档文件（以下简称"软件"）副本的人使用、复制、修改、合并、发布、分发、再许可和/或销售软件副本的权利，以及允许软件提供者这样做，但须符合以下条件：
 
 上述版权声明和本许可声明应包含在软件的所有副本或重要部分中。

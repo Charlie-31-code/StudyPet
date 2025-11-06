@@ -1,3 +1,7 @@
+# Copyright (c) 2025 Junsen
+# Copyright (c) 2025 StudyPet Team(Charlie-31-code,Mia-au,Xenia-www,Sylvia0601)
+# MIT License
+
 import logging
 import threading
 import time

@@ -1,4 +1,6 @@
-# Copyright (c) 2025 StudyPet Team(Mia-au,Charlie-31-code,Sylvia0601,Xenia-www)
+# Copyright (c) 2025 StudyPet Team(Charlie-31-code,Mia-au,Xenia-www,Sylvia0601)
+# MIT License
+
 # -*- coding: utf-8 -*-
 """
 番茄工作法计时器实现

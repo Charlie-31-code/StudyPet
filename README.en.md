@@ -6,7 +6,12 @@ English | [简体中文](README.md)
 
 StudyPet is a learning companion (partner) designed for college students, based on the [py-xiaozhi](https://github.com/huangjunsen0406/py-xiaozhi) project as a secondary development. This project helps college students improve their learning focus through AI technology, providing voice interaction and visual monitoring functions.
 
-This project is based on [py-xiaozhi](https://github.com/huangjunsen0406/py-xiaozhi) as a secondary development, inheriting its **MIT License**. The original project is copyrighted by huangjunsen0406. The secondary development portions are copyrighted by the StudyPet development team.
+This project is based on [py-xiaozhi](https://github.com/huangjunsen0406/py-xiaozhi) as a secondary development, inheriting its **MIT License**. According to the MIT License terms:
+
+- The original project is copyrighted by Junsen
+- New code and features added during secondary development are copyrighted by StudyPet Team(Charlie-31-code,Mia-au,Xenia-www,Sylvia0601)
+- Modifications to the original project code are jointly copyrighted by the original author and the secondary development team
+
 
 ## Features
 
@@ -267,8 +272,9 @@ python main.py --protocol mqtt       # MQTT protocol
 
 This project is based on [py-xiaozhi](https://github.com/huangjunsen0406/py-xiaozhi) and is licensed under the MIT License. 
 
-Copyright (c) 2024 huangjunsen0406
+Copyright (c) 2025 Junsen
 Copyright (c) 2025 StudyPet Team(Mia-au,Charlie-31-code,Xenia-www,Sylvia0601)
+
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights

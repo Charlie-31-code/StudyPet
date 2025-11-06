@@ -1,5 +1,5 @@
-# Copyright (c) 2024 huangjunsen0406
-# Copyright (c) 2025 StudyPet Team(Mia-au,Charlie-31-code)
+# Copyright (c) 2025 Junsen
+# Copyright (c) 2025 StudyPet Team(Charlie-31-code,Mia-au,Xenia-www,Sylvia0601)
 # MIT License
 
 import argparse
