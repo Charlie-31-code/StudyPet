@@ -454,9 +454,33 @@ Rectangle {
                     text: "-"
                     background: Rectangle { color: "#165dff"; radius: 4 }
                     contentItem: Text { text: "-"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                    onClicked: {
-                        if (displayModel && displayModel.studyMinutes > 1) {
-                            displayModel.studyMinutes -= 1
+                    
+                    // 长按快速减少时间的Timer
+                    Timer {
+                        id: studyMinutesTimer
+                        interval: 100
+                        repeat: true
+                        onTriggered: {
+                            if (displayModel && displayModel.studyMinutes > 1) {
+                                displayModel.studyMinutes -= 1
+                            } else {
+                                studyMinutesTimer.stop()
+                            }
+                        }
+                    }
+                    
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            if (displayModel && displayModel.studyMinutes > 1) {
+                                displayModel.studyMinutes -= 1
+                            }
+                        }
+                        onPressAndHold: {
+                            studyMinutesTimer.start()
+                        }
+                        onReleased: {
+                            studyMinutesTimer.stop()
                         }
                     }
                 }
@@ -489,9 +513,33 @@ Rectangle {
                     text: "-"
                     background: Rectangle { color: "#165dff"; radius: 4 }
                     contentItem: Text { text: "-"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                    onClicked: {
-                        if (displayModel && displayModel.breakMinutes > 5) {
-                            displayModel.breakMinutes -= 1
+                    
+                    // 长按快速减少时间的Timer
+                    Timer {
+                        id: breakMinutesTimer
+                        interval: 100
+                        repeat: true
+                        onTriggered: {
+                            if (displayModel && displayModel.breakMinutes > 5) {
+                                displayModel.breakMinutes -= 1
+                            } else {
+                                breakMinutesTimer.stop()
+                            }
+                        }
+                    }
+                    
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            if (displayModel && displayModel.breakMinutes > 5) {
+                                displayModel.breakMinutes -= 1
+                            }
+                        }
+                        onPressAndHold: {
+                            breakMinutesTimer.start()
+                        }
+                        onReleased: {
+                            breakMinutesTimer.stop()
                         }
                     }
                 }
@@ -524,9 +572,33 @@ Rectangle {
                     text: "-"
                     background: Rectangle { color: "#165dff"; radius: 4 }
                     contentItem: Text { text: "-"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                    onClicked: {
-                        if (displayModel && displayModel.longBreakMinutes > 15) {
-                            displayModel.longBreakMinutes -= 1
+                    
+                    // 长按快速减少时间的Timer
+                    Timer {
+                        id: longBreakMinutesTimer
+                        interval: 100
+                        repeat: true
+                        onTriggered: {
+                            if (displayModel && displayModel.longBreakMinutes > 15) {
+                                displayModel.longBreakMinutes -= 1
+                            } else {
+                                longBreakMinutesTimer.stop()
+                            }
+                        }
+                    }
+                    
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            if (displayModel && displayModel.longBreakMinutes > 15) {
+                                displayModel.longBreakMinutes -= 1
+                            }
+                        }
+                        onPressAndHold: {
+                            longBreakMinutesTimer.start()
+                        }
+                        onReleased: {
+                            longBreakMinutesTimer.stop()
                         }
                     }
                 }
@@ -559,9 +631,33 @@ Rectangle {
                     text: "-"
                     background: Rectangle { color: "#165dff"; radius: 4 }
                     contentItem: Text { text: "-"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                    onClicked: {
-                        if (displayModel && displayModel.cyclesBeforeLong > 1) {
-                            displayModel.cyclesBeforeLong -= 1
+                    
+                    // 长按快速减少时间的Timer
+                    Timer {
+                        id: cyclesTimer
+                        interval: 100
+                        repeat: true
+                        onTriggered: {
+                            if (displayModel && displayModel.cyclesBeforeLong > 1) {
+                                displayModel.cyclesBeforeLong -= 1
+                            } else {
+                                cyclesTimer.stop()
+                            }
+                        }
+                    }
+                    
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            if (displayModel && displayModel.cyclesBeforeLong > 1) {
+                                displayModel.cyclesBeforeLong -= 1
+                            }
+                        }
+                        onPressAndHold: {
+                            cyclesTimer.start()
+                        }
+                        onReleased: {
+                            cyclesTimer.stop()
                         }
                     }
                 }
@@ -609,6 +705,11 @@ Rectangle {
                         anchors.centerIn: parent
                         source: displayModel ? displayModel.emotionPath : ""
                         fillMode: Image.PreserveAspectFit
+                        // 启用动画播放（GIF支持）
+                        cache: false
+                        asynchronous: true
+                        smooth: true
+                        mipmap: true
                     }
                 }
 
