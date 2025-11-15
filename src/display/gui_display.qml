@@ -389,188 +389,324 @@ Rectangle {
         z: 20
 
         ColumnLayout {
-            id: studyColumn
-            Layout.alignment: Qt.AlignHCenter
-            spacing: 16
-            width: parent.width * 0.8
+            anchors.fill: parent
+            spacing: 20
+            Layout.topMargin: 30
+            Layout.bottomMargin: 30
+            Layout.leftMargin: 30
+            Layout.rightMargin: 30
 
-            // 主横向布局：左侧宠物/表情，右侧计时/人脸/进度/按钮
+            // 第一行：倒计时区域（顶部）
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 100
+                radius: 10
+                color: "white"
+                border.color: "#165dff"
+                border.width: 2
+                
+                Text {
+                    id: timerText
+                    anchors.centerIn: parent
+                    text: displayModel ? displayModel.studyTimerText : "25:00"
+                    font.pixelSize: 64
+                    font.family: "Arial, Microsoft YaHei UI"
+                    font.weight: Font.Bold
+                    color: "#165dff"
+                }
+            }
+
+            // 第二行：时间调整区域
             RowLayout {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 60
+                spacing: 15
                 Layout.alignment: Qt.AlignHCenter
-                spacing: 20
-                Layout.preferredWidth: parent.width
-
-                // 左侧：宠物图/表情（较大）
-                Image {
-                    id: studyPetImg
-                    source: displayModel ? displayModel.emotionPath : ""
-                    fillMode: Image.PreserveAspectFit
-                    Layout.preferredWidth: parent.width * 0.35
-                    Layout.preferredHeight: parent.width * 0.35
+                
+                // 预设下拉
+                ComboBox {
+                    id: presetCombo
+                    model: ["default", "deep", "short"]
+                    currentIndex: displayModel ? (displayModel.preset === "deep" ? 1 : (displayModel.preset === "short" ? 2 : 0)) : 0
+                    onCurrentTextChanged: {
+                        if (displayModel) {
+                            displayModel.preset = currentText
+                            if (currentText === "deep") {
+                                displayModel.studyMinutes = 50
+                                displayModel.breakMinutes = 10
+                                displayModel.longBreakMinutes = 20
+                            } else if (currentText === "short") {
+                                displayModel.studyMinutes = 15
+                                displayModel.breakMinutes = 5
+                                displayModel.longBreakMinutes = 15
+                            } else {
+                                // default: load from model's current or config
+                                // keep existing values
+                            }
+                        }
+                    }
                 }
 
-                // 右侧：计时与人脸窗口等
-                ColumnLayout {
-                    Layout.preferredWidth: parent.width * 0.45
-                    spacing: 12
-
-                    // 计时文案
-                    Text {
-                        id: timerText
-                        text: displayModel ? displayModel.studyTimerText : "25:00"
-                        font.pixelSize: 56
-                        horizontalAlignment: Text.AlignHCenter
-                        Layout.alignment: Qt.AlignHCenter
-                        color: "#222222"
-                    }
-
-                    // 自定义番茄计时设置（预设 + 手动分钟）
-                    RowLayout {
-                        Layout.alignment: Qt.AlignHCenter
-                        spacing: 8
-                        // 预设下拉
-                        ComboBox {
-                            id: presetCombo
-                            model: ["default", "deep", "short"]
-                            currentIndex: displayModel ? (displayModel.preset === "deep" ? 1 : (displayModel.preset === "short" ? 2 : 0)) : 0
-                            onCurrentTextChanged: {
-                                if (displayModel) {
-                                    displayModel.preset = currentText
-                                    if (currentText === "deep") {
-                                        displayModel.studyMinutes = 50
-                                        displayModel.breakMinutes = 10
-                                        displayModel.longBreakMinutes = 20
-                                    } else if (currentText === "short") {
-                                        displayModel.studyMinutes = 15
-                                        displayModel.breakMinutes = 5
-                                        displayModel.longBreakMinutes = 15
-                                    } else {
-                                        // default: load from model's current or config
-                                        // keep existing values
-                                    }
-                                }
-                            }
-                        }
-
-                        // 学习分钟输入
-                        SpinBox {
-                            id: studySpin
-                            from: 1; to: 180; stepSize: 1
-                            value: displayModel ? displayModel.studyMinutes : 25
-                            onValueChanged: { if (displayModel) displayModel.studyMinutes = value }
-                            Layout.preferredWidth: 120
-                        }
-
-                        Text { text: "分"; verticalAlignment: Text.AlignVCenter }
-
-                        // 休息分钟输入
-                        SpinBox {
-                            id: breakSpin
-                            from: 5; to: 36; stepSize: 1
-                            value: displayModel ? displayModel.breakMinutes : 5
-                            onValueChanged: { if (displayModel) displayModel.breakMinutes = value }
-                            Layout.preferredWidth: 120
-                        }
-
-                        Text { text: "休息分"; verticalAlignment: Text.AlignVCenter }
-
-                        // 长休息分钟
-                        SpinBox {
-                            id: longSpin
-                            from: 15; to: 30; stepSize: 1
-                            value: displayModel ? displayModel.longBreakMinutes : 15
-                            onValueChanged: { if (displayModel) displayModel.longBreakMinutes = value }
-                            Layout.preferredWidth: 120
-                        }
-
-                        Text { text: "长休息分"; verticalAlignment: Text.AlignVCenter }
-
-                        // cycles
-                        SpinBox {
-                            id: cyclesSpin
-                            from: 1; to: 10; stepSize: 1
-                            value: displayModel ? displayModel.cyclesBeforeLong : 4
-                            onValueChanged: { if (displayModel) displayModel.cyclesBeforeLong = value }
-                            Layout.preferredWidth: 90
+                // 学习分钟输入
+                Button {
+                    Layout.preferredWidth: 30
+                    Layout.preferredHeight: 30
+                    text: "-"
+                    background: Rectangle { color: "#165dff"; radius: 4 }
+                    contentItem: Text { text: "-"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    onClicked: {
+                        if (displayModel && displayModel.studyMinutes > 1) {
+                            displayModel.studyMinutes -= 1
                         }
                     }
-
-                    // 人脸窗口（放大并居中）
-                    Rectangle {
-                        id: faceWindow
-                        Layout.preferredWidth: parent.width
-                        Layout.preferredHeight: 180
-                        radius: 8
-                        color: "#ffffff"
-                        border.color: "#e6e6e6"
-                        border.width: 1
-                        Layout.alignment: Qt.AlignHCenter
-                        Image {
-                                id: faceImg
-                                // Avoid using anchors on an item that may be affected by layout sizing.
-                                // Use explicit sizing relative to the parent to prevent layout/anchor warnings.
-                                width: parent.width
-                                height: parent.height
-                                source: displayModel ? displayModel.faceImage : ""
-                                fillMode: Image.PreserveAspectCrop
-                                cache: true
-                            }
-                    }
-
-                    // 进度条
-                    Rectangle {
-                        Layout.preferredWidth: parent.width
-                        height: 18
-                        radius: 9
-                        color: "#e6e6e6"
-                        clip: true
-
-                        Rectangle {
-                            id: progressBar
-                            x: 0
-                            y: 0
-                            height: parent.height
-                            width: parent.width * ((displayModel ? displayModel.studyProgress : 0) / 100)
-                            color: "#4caf50"
-                            radius: 9
+                }
+                
+                Text {
+                    text: displayModel ? displayModel.studyMinutes : 25
+                    font.pixelSize: 20
+                    verticalAlignment: Text.AlignVCenter
+                }
+                
+                Button {
+                    Layout.preferredWidth: 30
+                    Layout.preferredHeight: 30
+                    text: "+"
+                    background: Rectangle { color: "#165dff"; radius: 4 }
+                    contentItem: Text { text: "+"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    onClicked: {
+                        if (displayModel && displayModel.studyMinutes < 180) {
+                            displayModel.studyMinutes += 1
                         }
                     }
+                }
+                
+                Text { text: "分"; verticalAlignment: Text.AlignVCenter }
 
-                    // 操作按钮（居中）
-                    RowLayout {
-                        Layout.alignment: Qt.AlignHCenter
-                        spacing: 12
-
-                        Button {
-                            id: studyStartBtn
-                            Layout.preferredWidth: 140
-                            Layout.preferredHeight: 44
-                            text: "开始"
-                            background: Rectangle { color: "#165dff"; radius: 8 }
-                            contentItem: Text { text: studyStartBtn.text; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                            onClicked: {
-                                // 仅在尚未开始学习会话时请求摄像头权限
-                                if (displayModel && displayModel.studySessionActive) {
-                                    // 已在学习会话中，通知后端一次性提示
-                                    root.studyStartAlreadyClicked()
-                                } else {
-                                    cameraDialog.open()
-                                }
-                            }
+                // 休息分钟输入
+                Button {
+                    Layout.preferredWidth: 30
+                    Layout.preferredHeight: 30
+                    text: "-"
+                    background: Rectangle { color: "#165dff"; radius: 4 }
+                    contentItem: Text { text: "-"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    onClicked: {
+                        if (displayModel && displayModel.breakMinutes > 5) {
+                            displayModel.breakMinutes -= 1
                         }
-
-                        Button {
-                            id: studyStopBtn
-                            Layout.preferredWidth: 140
-                            Layout.preferredHeight: 44
-                            text: "停止/退出"
-                            background: Rectangle { color: "#eceff3"; radius: 8 }
-                            contentItem: Text { text: studyStopBtn.text; color: "#1d2129"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                            onClicked: {
-                                root.studyStopClicked()
-                                displayModel.studyModeActive = false
-                            }
+                    }
+                }
+                
+                Text {
+                    text: displayModel ? displayModel.breakMinutes : 5
+                    font.pixelSize: 20
+                    verticalAlignment: Text.AlignVCenter
+                }
+                
+                Button {
+                    Layout.preferredWidth: 30
+                    Layout.preferredHeight: 30
+                    text: "+"
+                    background: Rectangle { color: "#165dff"; radius: 4 }
+                    contentItem: Text { text: "+"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    onClicked: {
+                        if (displayModel && displayModel.breakMinutes < 36) {
+                            displayModel.breakMinutes += 1
                         }
+                    }
+                }
+                
+                Text { text: "休息分"; verticalAlignment: Text.AlignVCenter }
+
+                // 长休息分钟
+                Button {
+                    Layout.preferredWidth: 30
+                    Layout.preferredHeight: 30
+                    text: "-"
+                    background: Rectangle { color: "#165dff"; radius: 4 }
+                    contentItem: Text { text: "-"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    onClicked: {
+                        if (displayModel && displayModel.longBreakMinutes > 15) {
+                            displayModel.longBreakMinutes -= 1
+                        }
+                    }
+                }
+                
+                Text {
+                    text: displayModel ? displayModel.longBreakMinutes : 15
+                    font.pixelSize: 20
+                    verticalAlignment: Text.AlignVCenter
+                }
+                
+                Button {
+                    Layout.preferredWidth: 30
+                    Layout.preferredHeight: 30
+                    text: "+"
+                    background: Rectangle { color: "#165dff"; radius: 4 }
+                    contentItem: Text { text: "+"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    onClicked: {
+                        if (displayModel && displayModel.longBreakMinutes < 30) {
+                            displayModel.longBreakMinutes += 1
+                        }
+                    }
+                }
+                
+                Text { text: "长休息分"; verticalAlignment: Text.AlignVCenter }
+
+                // cycles
+                Button {
+                    Layout.preferredWidth: 30
+                    Layout.preferredHeight: 30
+                    text: "-"
+                    background: Rectangle { color: "#165dff"; radius: 4 }
+                    contentItem: Text { text: "-"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    onClicked: {
+                        if (displayModel && displayModel.cyclesBeforeLong > 1) {
+                            displayModel.cyclesBeforeLong -= 1
+                        }
+                    }
+                }
+                
+                Text {
+                    text: displayModel ? displayModel.cyclesBeforeLong : 4
+                    font.pixelSize: 20
+                    verticalAlignment: Text.AlignVCenter
+                }
+                
+                Button {
+                    Layout.preferredWidth: 30
+                    Layout.preferredHeight: 30
+                    text: "+"
+                    background: Rectangle { color: "#165dff"; radius: 4 }
+                    contentItem: Text { text: "+"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    onClicked: {
+                        if (displayModel && displayModel.cyclesBeforeLong < 10) {
+                            displayModel.cyclesBeforeLong += 1
+                        }
+                    }
+                }
+            }
+
+            // 第三行：中间内容区域（宠物和人脸检测）
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                spacing: 20
+                
+                // 左侧：宠物区域（小鼠表情包）
+                Rectangle {
+                    Layout.preferredWidth: 390
+                    Layout.preferredHeight: 390
+                    Layout.fillHeight: true
+                    radius: 10
+                    color: "white"
+                    border.color: "#2ed573"
+                    border.width: 2
+                    
+                    Image {
+                        id: studyPetImg
+                        width: parent.width * 1.2
+                        height: parent.height * 1.2
+                        anchors.centerIn: parent
+                        source: displayModel ? displayModel.emotionPath : ""
+                        fillMode: Image.PreserveAspectFit
+                    }
+                }
+
+                // 右侧：人脸检测区域
+                Rectangle {
+                    Layout.preferredWidth: 400
+                    Layout.preferredHeight: 280
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    radius: 10
+                    color: "white"
+                    border.color: "#165dff"
+                    border.width: 2
+                    
+                    Image {
+                        id: faceImg
+                        anchors.fill: parent
+                        source: displayModel ? displayModel.faceImage : ""
+                        fillMode: Image.PreserveAspectFit
+                        cache: true
+                    }
+                }
+            }
+
+            // 第四行：进度条
+            Rectangle {
+                Layout.fillWidth: true
+                height: 18
+                radius: 9
+                color: "#e6e6e6"
+                clip: true
+
+                Rectangle {
+                    id: progressBar
+                    x: 0
+                    y: 0
+                    height: parent.height
+                    width: parent.width * ((displayModel ? displayModel.studyProgress : 0) / 100)
+                    color: "#4caf50"
+                    radius: 9
+                }
+            }
+
+            // 第五行：按钮区域（底部）
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 70
+                Layout.alignment: Qt.AlignHCenter
+                spacing: 100
+                
+                Button {
+                    id: studyStartBtn
+                    Layout.preferredWidth: 150
+                    Layout.preferredHeight: 60
+                    text: displayModel && displayModel.studySessionActive ? "已开始" : "开始"
+                    background: Rectangle { 
+                        color: displayModel && displayModel.studySessionActive ? "#2ed573" : "#165dff"
+                        radius: 5
+                    }
+                    contentItem: Text { 
+                        text: studyStartBtn.text; 
+                        color: "white"; 
+                        font.pixelSize: 20
+                        font.weight: Font.Medium
+                        horizontalAlignment: Text.AlignHCenter; 
+                        verticalAlignment: Text.AlignVCenter 
+                    }
+                    onClicked: {
+                        // 仅在尚未开始学习会话时请求摄像头权限
+                        if (displayModel && displayModel.studySessionActive) {
+                            // 已在学习会话中，通知后端一次性提示
+                            root.studyStartAlreadyClicked()
+                        } else {
+                            cameraDialog.open()
+                        }
+                    }
+                }
+
+                Button {
+                    id: studyStopBtn
+                    Layout.preferredWidth: 150
+                    Layout.preferredHeight: 60
+                    text: "停止/退出"
+                    background: Rectangle { 
+                        color: "#eceff3"
+                        radius: 5
+                    }
+                    contentItem: Text { 
+                        text: studyStopBtn.text; 
+                        color: "#1d2129"; 
+                        font.pixelSize: 20
+                        font.weight: Font.Medium
+                        horizontalAlignment: Text.AlignHCenter; 
+                        verticalAlignment: Text.AlignVCenter 
+                    }
+                    onClicked: {
+                        root.studyStopClicked()
+                        displayModel.studyModeActive = false
                     }
                 }
             }
