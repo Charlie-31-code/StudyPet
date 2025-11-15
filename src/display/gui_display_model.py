@@ -201,20 +201,6 @@ class GuiDisplayModel(QObject):
             self._study_session_active = bool(value)
             self.studySessionActiveChanged.emit()
 
-    @pyqtProperty(bool, notify=studyModeActiveChanged)
-    def studyModeActive(self):
-        try:
-            return self._study_mode_active
-        except AttributeError:
-            self._init_study_props()
-            return self._study_mode_active
-
-    @studyModeActive.setter
-    def studyModeActive(self, value: bool):
-        if getattr(self, "_study_mode_active", False) != value:
-            self._study_mode_active = value
-            self.studyModeActiveChanged.emit()
-
     @pyqtProperty(str, notify=studyTimerTextChanged)
     def studyTimerText(self):
         try:
@@ -289,6 +275,33 @@ class GuiDisplayModel(QObject):
         if getattr(self, "_study_minutes", None) != v:
             self._study_minutes = v
             self.studyMinutesChanged.emit()
+            # 当学习时长更改时，同时更新界面上的倒计时显示
+            if not self._study_session_active:
+                self.studyTimerText = f"{v:02d}:00"
+
+    def _update_study_timer_text(self):
+        """更新学习模式倒计时文本显示"""
+        # 只有在学习模式激活但会话未开始时才更新显示
+        if self._study_mode_active and not self._study_session_active:
+            minutes = self._study_minutes
+            self.studyTimerText = f"{minutes:02d}:00"
+
+    @pyqtProperty(bool, notify=studyModeActiveChanged)
+    def studyModeActive(self):
+        try:
+            return self._study_mode_active
+        except AttributeError:
+            self._init_study_props()
+            return self._study_mode_active
+
+    @studyModeActive.setter
+    def studyModeActive(self, value: bool):
+        if getattr(self, "_study_mode_active", False) != value:
+            self._study_mode_active = value
+            self.studyModeActiveChanged.emit()
+            # 当学习模式激活时，更新倒计时显示为设置的学习时长
+            if value and not self._study_session_active:
+                self._update_study_timer_text()
 
     @pyqtProperty(int, notify=breakMinutesChanged)
     def breakMinutes(self):

@@ -1,3 +1,4 @@
+
 # Copyright (c) 2025 StudyPet Team(Charlie-31-code,Mia-au,Xenia-www,Sylvia0601)
 # MIT License
 
@@ -78,6 +79,36 @@ class TomatoTimer:
         self.focus_duration = focus
         self.short_break_duration = short_break
         self.long_break_duration = long_break
+
+    @property
+    def study_seconds(self):
+        """获取学习时长（秒）"""
+        return self.focus_duration
+    
+    @study_seconds.setter
+    def study_seconds(self, value):
+        """设置学习时长（秒）"""
+        self.focus_duration = value
+
+    @property
+    def short_break(self):
+        """获取短休息时长（秒）"""
+        return self.short_break_duration
+    
+    @short_break.setter
+    def short_break(self, value):
+        """设置短休息时长（秒）"""
+        self.short_break_duration = value
+
+    @property
+    def long_break(self):
+        """获取长休息时长（秒）"""
+        return self.long_break_duration
+    
+    @long_break.setter
+    def long_break(self, value):
+        """设置长休息时长（秒）"""
+        self.long_break_duration = value
 
     def set_on_tick(self, cb: Callable[[int, int], None]):
         self.on_tick = cb

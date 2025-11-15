@@ -335,6 +335,11 @@ class UIPlugin(Plugin):
                 # 标记会话为激活状态（用于 QML 判断是否重复启动）
                 try:
                     self.display.display_model.studySessionActive = True
+                    # 设置初始倒计时显示为用户设置的时间
+                    study_minutes = self.display.display_model.studyMinutes
+                    self.display.display_model.studyTimerText = f"{study_minutes:02d}:00"
+                    # 重置进度条
+                    self.display.display_model.studyProgress = 0
                 except Exception:
                     pass
                 # 启动人脸监控（如果存在）并绑定回调

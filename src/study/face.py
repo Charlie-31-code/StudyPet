@@ -56,7 +56,7 @@ class FaceMonitor:
     def __init__(
         self,
         camera_index: int = 0,
-        check_interval: int = 5,
+        check_interval: int = 3,
         detection_method: DetectionMethod = DetectionMethod.HAAR_CASCADE,
         yolo_model_path: str = "yolov8n.pt",
         yolo_device: str = "0" if YOLO_AVAILABLE else "cpu",
