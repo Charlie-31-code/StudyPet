@@ -8,6 +8,7 @@ import json
 import logging
 import threading
 import time
+import re
 from typing import List, Dict, Any
 from PyQt5.QtWidgets import (
     QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, 
@@ -16,6 +17,11 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QDateTime
 from PyQt5.QtGui import QFont
+
+# 导入matplotlib相关库
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+import matplotlib.font_manager as fm
 
 from src.views.base.base_window import BaseWindow
 from src.utils.common_utils import get_app_data_dir
@@ -224,6 +230,43 @@ class StudyRecordWindow(BaseWindow):
         
         self.content_layout.addWidget(welcome_label)
 
+    def _parse_log_for_study_data(self) -> Dict[str, Any]:
+        """
+        从日志文件中解析学习数据
+        """
+        try:
+            # 获取日志文件路径
+            log_file_path = os.path.join(get_app_data_dir(), "logs", "app.log")
+            if not os.path.exists(log_file_path):
+                return None
+
+            # 读取日志文件
+            with open(log_file_path, 'r', encoding='utf-8') as f:
+                log_lines = f.readlines()
+
+            # 查找最新的FaceMonitor会话结束记录
+            session_end_pattern = r"FaceMonitor.*会话.*结束.*\{'duration': ([\d.]+), 'avg_score': ([\d.]+), 'focused_count': (\d+), 'distracted_count': (\d+), 'absent_count': (\d+), 'blocked_count': (\d+), 'total_checks': (\d+)\}"
+            
+            latest_session_data = None
+            for line in reversed(log_lines):  # 从后往前查找最新的记录
+                match = re.search(session_end_pattern, line)
+                if match:
+                    latest_session_data = {
+                        'duration': float(match.group(1)),
+                        'avg_score': float(match.group(2)),
+                        'focused_count': int(match.group(3)),
+                        'distracted_count': int(match.group(4)),
+                        'absent_count': int(match.group(5)),
+                        'blocked_count': int(match.group(6)),
+                        'total_checks': int(match.group(7))
+                    }
+                    break
+            
+            return latest_session_data
+        except Exception as e:
+            logger.error(f"解析日志文件失败: {e}", exc_info=True)
+            return None
+
     def _get_latest_study_report(self) -> Dict[str, Any]:
         """
         获取最新的学习报告数据.
@@ -391,15 +434,13 @@ class StudyRecordWindow(BaseWindow):
         """
         self._clear_content_area()
         
-        # 读取最新的学习报告
+        # 首先尝试从学习报告获取数据
         report_data = self._get_latest_study_report()
+        session_data = None
         
-        # 创建学习详情组
-        details_group = QGroupBox("学习详情")
-        details_group.setFont(QFont("PingFang SC", 13, QFont.Bold))
-        
-        grid_layout = QGridLayout()
-        grid_layout.setSpacing(15)
+        # 如果没有学习报告，则从日志中解析数据
+        if not report_data or 'report' not in report_data:
+            session_data = self._parse_log_for_study_data()
         
         # 处理学习报告数据
         if report_data and 'report' in report_data:
@@ -425,6 +466,13 @@ class StudyRecordWindow(BaseWindow):
                 duration_text = f"{minutes}分{seconds}秒"
                 data_items.append(("专注学习时长", duration_text))
                 
+                # 创建学习详情组
+                details_group = QGroupBox("学习详情")
+                details_group.setFont(QFont("PingFang SC", 13, QFont.Bold))
+                
+                grid_layout = QGridLayout()
+                grid_layout.setSpacing(15)
+                
                 for i, (label_text, value) in enumerate(data_items):
                     label = QLabel(f"{label_text}:")
                     label.setFont(QFont("PingFang SC", 12))
@@ -437,6 +485,12 @@ class StudyRecordWindow(BaseWindow):
                     
                     grid_layout.addWidget(label, i, 0)
                     grid_layout.addWidget(value_label, i, 1)
+                
+                details_group.setLayout(grid_layout)
+                self.content_layout.addWidget(details_group)
+                
+                # 添加可视化图表
+                self._add_visualization_charts(report)
                 
                 # 添加鼓励话语
                 encouragement_group = QGroupBox("鼓励话语")
@@ -460,12 +514,79 @@ class StudyRecordWindow(BaseWindow):
                 time_label.setStyleSheet("color: #999999; margin-top: 10px;")
                 
                 # 添加到布局
-                details_group.setLayout(grid_layout)
-                self.content_layout.addWidget(details_group)
                 self.content_layout.addWidget(encouragement_group)
                 self.content_layout.addWidget(time_label)
                 
                 return
+        elif session_data:
+            # 使用从日志中解析的数据
+            # 显示各项真实数据
+            data_items = [
+                ("专注次数", session_data.get("focused_count", 0)),
+                ("分心次数", session_data.get("distracted_count", 0)),
+                ("离开次数", session_data.get("absent_count", 0)),
+                ("遮挡摄像头次数", session_data.get("blocked_count", 0)),
+                ("总检测次数", session_data.get("total_checks", 0)),
+                ("平均专注度分数", f"{int(session_data.get('avg_score', 0))}分")
+            ]
+            
+            # 计算专注时长
+            duration_seconds = session_data.get("duration", 0)
+            minutes = int(duration_seconds // 60)
+            seconds = int(duration_seconds % 60)
+            duration_text = f"{minutes}分{seconds}秒"
+            data_items.append(("专注学习时长", duration_text))
+            
+            # 创建学习详情组
+            details_group = QGroupBox("学习详情")
+            details_group.setFont(QFont("PingFang SC", 13, QFont.Bold))
+            
+            grid_layout = QGridLayout()
+            grid_layout.setSpacing(15)
+            
+            for i, (label_text, value) in enumerate(data_items):
+                label = QLabel(f"{label_text}:")
+                label.setFont(QFont("PingFang SC", 12))
+                label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                
+                value_label = QLabel(str(value))
+                value_label.setFont(QFont("PingFang SC", 12, QFont.Bold))
+                value_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                value_label.setStyleSheet("color: #3366cc;")
+                
+                grid_layout.addWidget(label, i, 0)
+                grid_layout.addWidget(value_label, i, 1)
+            
+            details_group.setLayout(grid_layout)
+            self.content_layout.addWidget(details_group)
+            
+            # 添加可视化图表
+            self._add_visualization_charts(session_data)
+            
+            # 添加鼓励话语
+            encouragement_group = QGroupBox("鼓励话语")
+            encouragement_group.setFont(QFont("PingFang SC", 13, QFont.Bold))
+            
+            encouragement_text = self._get_encouragement_text(session_data)
+            encouragement_label = QLabel(encouragement_text)
+            encouragement_label.setFont(QFont("PingFang SC", 12))
+            encouragement_label.setWordWrap(True)
+            encouragement_label.setStyleSheet("color: #ff6600; padding: 10px;")
+            
+            encouragement_layout = QVBoxLayout()
+            encouragement_layout.addWidget(encouragement_label)
+            encouragement_group.setLayout(encouragement_layout)
+            
+            # 添加数据来源说明
+            time_label = QLabel("数据来源: 实时日志分析")
+            time_label.setFont(QFont("PingFang SC", 10))
+            time_label.setStyleSheet("color: #999999; margin-top: 10px;")
+            
+            # 添加到布局
+            self.content_layout.addWidget(encouragement_group)
+            self.content_layout.addWidget(time_label)
+            
+            return
         
         # 如果没有有效数据，显示提示信息
         no_data_label = QLabel("暂无学习详情数据")
@@ -474,6 +595,75 @@ class StudyRecordWindow(BaseWindow):
         no_data_label.setStyleSheet("color: #999999; margin: 50px;")
         
         self.content_layout.addWidget(no_data_label)
+
+    def _add_visualization_charts(self, report):
+        """
+        添加可视化图表展示专注度数据.
+        
+        Args:
+            report: 学习报告数据
+        """
+        # 创建图表组
+        charts_group = QGroupBox("专注度数据可视化")
+        charts_group.setFont(QFont("PingFang SC", 13, QFont.Bold))
+        charts_layout = QVBoxLayout()
+        
+        # 创建matplotlib图表
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
+        fig.tight_layout(pad=3.0)
+        
+        # 设置中文字体
+        plt.rcParams['font.sans-serif'] = ['SimHei', 'PingFang SC', 'Arial Unicode MS']
+        plt.rcParams['axes.unicode_minus'] = False
+        
+        # 数据准备
+        focused_count = report.get("focused_count", 0)
+        distracted_count = report.get("distracted_count", 0)
+        absent_count = report.get("absent_count", 0)
+        blocked_count = report.get("blocked_count", 0)
+        
+        # 创建柱状图
+        categories = ['专注', '分心', '离开', '遮挡']
+        values = [focused_count, distracted_count, absent_count, blocked_count]
+        colors = ['#4CAF50', '#FF9800', '#F44336', '#9C27B0']
+        
+        bars = ax1.bar(categories, values, color=colors)
+        ax1.set_title('专注度状态分布', fontsize=12, pad=10)
+        ax1.set_ylabel('次数', fontsize=10)
+        
+        # 在柱状图上添加数值标签
+        for bar, value in zip(bars, values):
+            height = bar.get_height()
+            ax1.text(bar.get_x() + bar.get_width()/2., height,
+                    f'{value}',
+                    ha='center', va='bottom', fontsize=9)
+        
+        # 创建饼图
+        non_zero_values = [v for v in values if v > 0]
+        non_zero_categories = [cat for cat, val in zip(categories, values) if val > 0]
+        non_zero_colors = [col for col, val in zip(colors, values) if val > 0]
+        
+        if non_zero_values:
+            wedges, texts, autotexts = ax2.pie(non_zero_values, labels=non_zero_categories, 
+                                               colors=non_zero_colors, autopct='%1.1f%%',
+                                               startangle=90)
+            ax2.set_title('专注度状态占比', fontsize=12, pad=10)
+            
+            # 设置饼图标签字体大小
+            for text in texts:
+                text.set_fontsize(9)
+            for autotext in autotexts:
+                autotext.set_fontsize(9)
+        
+        # 将图表嵌入到QWidget中
+        canvas = FigureCanvas(fig)
+        charts_layout.addWidget(canvas)
+        
+        charts_group.setLayout(charts_layout)
+        self.content_layout.addWidget(charts_group)
+        
+        # 调整图表布局
+        fig.subplots_adjust(left=0.1, right=0.9, top=0.85, bottom=0.15)
 
     def _export_study_report(self):
         """
