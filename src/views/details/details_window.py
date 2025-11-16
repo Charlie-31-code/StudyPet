@@ -147,111 +147,89 @@ class DetailsWindow(BaseWindow):
         """
         显示学习模式专注度详情，使用真实的学习报告数据.
         """
-        try:
-            self._clear_content_area()
-            
-            # 先刷新报告列表，确保获取最新数据
-            self.refresh_report_list()
-            
-            # 读取最新的学习报告
-            report_data = self._get_latest_study_report()
-            
-            # 创建专注度数据展示组
-            focus_group = QGroupBox("专注度数据详情")
-            focus_group.setObjectName("focus_data_group")
-            focus_group.setFont(QFont("PingFang SC", 13, QFont.Bold))
-            
-            grid_layout = QGridLayout()
-            grid_layout.setSpacing(15)
-            
-            # 处理学习报告数据
-            if report_data and 'report' in report_data:
-                # 从学习报告中提取真实数据
-                report = report_data['report']
-                if report:
-                    # 显示各项真实数据
-                    data_items = [
-                        ("专注次数", report.get("focused_count", 0)),
-                        ("分心次数", report.get("distracted_count", 0)),
-                        ("离开次数", report.get("absent_count", 0)),
-                        ("遮挡摄像头次数", report.get("blocked_count", 0)),
-                        ("总检测次数", report.get("total_checks", 0)),
-                        ("平均专注度分数", f"{int(report.get('avg_score', 0))}分")
-                    ]
+        self._clear_content_area()
+        
+        # 读取最新的学习报告
+        report_data = self._get_latest_study_report()
+        
+        # 创建专注度数据展示组
+        focus_group = QGroupBox("专注度数据详情")
+        focus_group.setFont(QFont("PingFang SC", 13, QFont.Bold))
+        
+        grid_layout = QGridLayout()
+        grid_layout.setSpacing(15)
+        
+        # 处理学习报告数据
+        if report_data and 'report' in report_data:
+            # 从学习报告中提取真实数据
+            report = report_data['report']
+            if report:
+                # 显示各项真实数据
+                data_items = [
+                    ("专注次数", report.get("focused_count", 0)),
+                    ("分心次数", report.get("distracted_count", 0)),
+                    ("离开次数", report.get("absent_count", 0)),
+                    ("遮挡摄像头次数", report.get("blocked_count", 0)),
+                    ("总检测次数", report.get("total_checks", 0)),
+                    ("平均专注度分数", f"{int(report.get('avg_score', 0))}分")
+                ]
+                
+                # 计算专注时长
+                duration_seconds = report.get("duration", 0)
+                minutes = int(duration_seconds // 60)
+                seconds = int(duration_seconds % 60)
+                duration_text = f"{minutes}分{seconds}秒"
+                data_items.append(("专注学习时长", duration_text))
+                
+                for i, (label_text, value) in enumerate(data_items):
+                    label = QLabel(f"{label_text}:")
+                    label.setFont(QFont("PingFang SC", 12))
+                    label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
                     
-                    # 计算专注时长
-                    duration_seconds = report.get("duration", 0)
-                    minutes = int(duration_seconds // 60)
-                    seconds = int(duration_seconds % 60)
-                    duration_text = f"{minutes}分{seconds}秒"
-                    data_items.append(("专注学习时长", duration_text))
+                    value_label = QLabel(str(value))
+                    value_label.setFont(QFont("PingFang SC", 12, QFont.Bold))
+                    value_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                    value_label.setStyleSheet("color: #3366cc;")
                     
-                    for i, (label_text, value) in enumerate(data_items):
-                        label = QLabel(f"{label_text}:")
-                        label.setFont(QFont("PingFang SC", 12))
-                        label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                        
-                        value_label = QLabel(str(value))
-                        value_label.setFont(QFont("PingFang SC", 12, QFont.Bold))
-                        value_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-                        value_label.setStyleSheet("color: #3366cc;")
-                        
-                        grid_layout.addWidget(label, i, 0)
-                        grid_layout.addWidget(value_label, i, 1)
-                    
-                    # 添加鼓励话语
-                    encouragement_group = QGroupBox("鼓励话语")
-                    encouragement_group.setFont(QFont("PingFang SC", 13, QFont.Bold))
-                    
-                    # 修改传递给鼓励话语方法的参数格式，确保数据结构正确
-                    encouragement_text = self._get_encouragement_text({
-                        "distraction_count": report.get("distracted_count", 0), 
-                        "focus_duration": duration_text
-                    })
-                    encouragement_label = QLabel(encouragement_text)
-                    encouragement_label.setFont(QFont("PingFang SC", 12))
-                    encouragement_label.setWordWrap(True)
-                    encouragement_label.setStyleSheet("color: #ff6600; padding: 10px;")
-                    
-                    encouragement_layout = QVBoxLayout()
-                    encouragement_layout.addWidget(encouragement_label)
-                    encouragement_group.setLayout(encouragement_layout)
-                    
-                    # 添加报告生成时间
-                    timestamp = report_data.get('timestamp', time.time())
-                    time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp))
-                    time_label = QLabel(f"报告生成时间: {time_str}")
-                    time_label.setFont(QFont("PingFang SC", 10))
-                    time_label.setStyleSheet("color: #999999; margin-top: 10px;")
-                    
-                    # 添加到布局
-                    focus_group.setLayout(grid_layout)
-                    self.content_layout.addWidget(focus_group)
-                    self.content_layout.addWidget(encouragement_group)
-                    self.content_layout.addWidget(time_label)
-                    
-                    return
-            
-            # 如果没有有效数据，显示提示信息
-            no_data_label = QLabel("暂无学习报告数据")
-            no_data_label.setFont(QFont("PingFang SC", 14))
-            no_data_label.setAlignment(Qt.AlignCenter)
-            no_data_label.setStyleSheet("color: #999999; margin: 50px;")
-            
-            # 添加提示文字
-            help_label = QLabel("完成一次学习模式后，这里会显示您的专注度统计信息")
-            help_label.setAlignment(Qt.AlignCenter)
-            help_label.setWordWrap(True)
-            help_label.setStyleSheet("color: #666666; margin-top: 10px;")
-            
-            self.content_layout.addWidget(no_data_label)
-            self.content_layout.addWidget(help_label)
-        except Exception as e:
-            logger.error(f"显示专注度详情时出错: {e}", exc_info=True)
-            self._clear_content_area()
-            error_label = QLabel(f"加载数据时出错: {str(e)}")
-            error_label.setStyleSheet("color: #ff4444;")
-            self.content_layout.addWidget(error_label)
+                    grid_layout.addWidget(label, i, 0)
+                    grid_layout.addWidget(value_label, i, 1)
+                
+                # 添加鼓励话语
+                encouragement_group = QGroupBox("鼓励话语")
+                encouragement_group.setFont(QFont("PingFang SC", 13, QFont.Bold))
+                
+                encouragement_text = self._get_encouragement_text(report)
+                encouragement_label = QLabel(encouragement_text)
+                encouragement_label.setFont(QFont("PingFang SC", 12))
+                encouragement_label.setWordWrap(True)
+                encouragement_label.setStyleSheet("color: #ff6600; padding: 10px;")
+                
+                encouragement_layout = QVBoxLayout()
+                encouragement_layout.addWidget(encouragement_label)
+                encouragement_group.setLayout(encouragement_layout)
+                
+                # 添加报告生成时间
+                timestamp = report_data.get('timestamp', time.time())
+                time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp))
+                time_label = QLabel(f"报告生成时间: {time_str}")
+                time_label.setFont(QFont("PingFang SC", 10))
+                time_label.setStyleSheet("color: #999999; margin-top: 10px;")
+                
+                # 添加到布局
+                focus_group.setLayout(grid_layout)
+                self.content_layout.addWidget(focus_group)
+                self.content_layout.addWidget(encouragement_group)
+                self.content_layout.addWidget(time_label)
+                
+                return
+        
+        # 如果没有有效数据，显示提示信息
+        no_data_label = QLabel("暂无学习报告数据")
+        no_data_label.setFont(QFont("PingFang SC", 14))
+        no_data_label.setAlignment(Qt.AlignCenter)
+        no_data_label.setStyleSheet("color: #999999; margin: 50px;")
+        
+        self.content_layout.addWidget(no_data_label)
     
     def _show_conversation_history(self):
         """
@@ -412,40 +390,27 @@ class DetailsWindow(BaseWindow):
             学习报告数据字典，如果没有则返回None
         """
         try:
-            logger.info("尝试获取最新的学习报告数据")
-            
-            # 确保报告目录路径已设置
-            if not hasattr(self, '_report_dir'):
-                logger.info("初始化报告目录路径")
-                self._report_dir = os.path.join(get_app_data_dir(), "config", "study_reports")
-            
-            # 确保报告目录存在
             if not os.path.exists(self._report_dir):
-                logger.warning(f"报告目录不存在: {self._report_dir}")
                 return None
             
-            # 尝试从目录中获取最新的报告文件
-            report_files = [f for f in os.listdir(self._report_dir) 
-                          if f.endswith('.json') and f.startswith('report_')]
-            
+            # 获取所有报告文件
+            report_files = [f for f in os.listdir(self._report_dir) if f.endswith('.json')]
             if not report_files:
-                logger.info("报告目录中没有找到学习报告文件")
                 return None
             
-            # 按文件名排序，获取最新的报告文件（report_后面的数字是时间戳）
+            # 按文件名排序，获取最新的报告
             report_files.sort(reverse=True)
-            latest_file_name = report_files[0]
-            latest_file_path = os.path.join(self._report_dir, latest_file_name)
+            latest_report = report_files[0]
             
-            # 读取最新的报告文件
-            with open(latest_file_path, 'r', encoding='utf-8') as f:
-                latest_report_data = json.load(f)
+            # 读取报告内容
+            report_path = os.path.join(self._report_dir, latest_report)
+            with open(report_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
             
-            logger.info(f"成功获取最新学习报告: {latest_file_name}")
-            return latest_report_data
+            return data
             
         except Exception as e:
-            logger.error(f"获取最新学习报告失败: {e}", exc_info=True)
+            logger.error(f"读取学习报告失败: {e}", exc_info=True)
             return None
     
     def _get_mock_focus_data(self) -> Dict[str, Any]:
@@ -455,21 +420,11 @@ class DetailsWindow(BaseWindow):
         Returns:
             模拟的专注度数据字典
         """
-        import random
-        # 构建与真实报告格式一致的模拟数据
         return {
-            "report": {
-                "duration": 1500,  # 25分钟
-                "focused_count": random.randint(20, 30),
-                "distraction_count": random.randint(0, 5),
-                "distracted_count": random.randint(0, 5),
-                "absent_count": random.randint(0, 3),
-                "blocked_count": random.randint(0, 2),
-                "total_checks": random.randint(30, 40),
-                "avg_score": random.randint(70, 95)
-            },
-            "session_id": f"mock_session_{random.randint(1000, 9999)}",
-            "timestamp": time.time()
+            "distraction_count": 5,
+            "leave_count": 2,
+            "camera_block_count": 1,
+            "focus_duration": "45分钟"
         }
     
 
@@ -511,71 +466,22 @@ class DetailsWindow(BaseWindow):
         
     def refresh_report_list(self):
         """
-        刷新报告列表
+        刷新学习报告列表，从report_history.json加载所有报告
         """
         try:
-            logger.info("刷新学习报告列表")
+            report_dir = os.path.join(get_app_data_dir(), "config", "study_reports")
+            history_file = os.path.join(report_dir, "report_history.json")
             
-            # 设置报告历史文件路径
-            self._report_dir = os.path.join(get_app_data_dir(), "config", "study_reports")
-            self._report_history_file = os.path.join(self._report_dir, "report_history.json")
+            # 初始化报告列表属性
+            self._all_reports = []
             
-            # 读取报告历史文件
-            if os.path.exists(self._report_history_file):
-                with open(self._report_history_file, 'r', encoding='utf-8') as f:
-                    all_reports = json.load(f)
-                
-                # 保存报告列表引用
-                self._all_reports = all_reports
-                logger.info(f"从历史文件加载了 {len(all_reports)} 个报告")
-            else:
-                # 如果历史文件不存在，从目录扫描报告文件并创建索引
-                logger.info("报告历史文件不存在，正在创建报告索引")
-                
-                # 获取目录中的所有报告文件
-                report_files = [f for f in os.listdir(self._report_dir) 
-                              if f.endswith('.json') and f.startswith('report_')]
-                
-                if report_files:
-                    # 创建报告索引列表
-                    all_reports = []
-                    for report_file in report_files:
-                        # 尝试获取时间戳
-                        try:
-                            # 从文件名提取时间戳
-                            timestamp_str = report_file.replace('report_', '').replace('.json', '')
-                            timestamp = float(timestamp_str)
-                            
-                            # 添加到报告列表
-                            all_reports.append({
-                                'file_name': report_file,
-                                'timestamp': timestamp
-                            })
-                        except Exception as e:
-                            logger.warning(f"处理报告文件 {report_file} 时出错: {e}")
-                    
-                    # 按时间戳排序，最新的报告在前
-                    all_reports.sort(key=lambda x: x['timestamp'], reverse=True)
-                    
-                    # 保存到实例和文件
-                    self._all_reports = all_reports
-                    
-                    # 尝试保存到历史文件
-                    try:
-                        with open(self._report_history_file, 'w', encoding='utf-8') as f:
-                            json.dump(all_reports, f, ensure_ascii=False, indent=2)
-                        logger.info(f"成功创建报告索引，共 {len(all_reports)} 个报告")
-                    except Exception as e:
-                        logger.warning(f"保存报告索引失败: {e}")
-                else:
-                    self._all_reports = []
-                    logger.info("没有找到学习报告文件")
-            
+            if os.path.exists(history_file):
+                with open(history_file, 'r', encoding='utf-8') as f:
+                    self._report_list = json.load(f)
+                    # 只保存报告列表信息，不立即加载所有报告的详细内容
+                    # 详细内容将在需要时（如点击查看）才加载
         except Exception as e:
-            logger.error(f"刷新报告列表失败: {e}", exc_info=True)
-            # 初始化一个空列表，避免后续操作出错
-            if not hasattr(self, '_all_reports'):
-                self._all_reports = []
+            logger.error(f"刷新报告列表失败: {e}")
     
     def _load_all_study_reports(self, report_list):
         """
@@ -597,25 +503,22 @@ class DetailsWindow(BaseWindow):
     
     def add_study_report(self, report_data):
         """
-        添加新的学习报告并更新显示
+        添加新的学习报告
         
         Args:
             report_data: 报告数据
         """
         try:
-            # 直接刷新报告列表，从文件系统重新加载，确保数据一致性
-            self.refresh_report_list()
+            # 如果没有_all_reports属性，初始化它
+            if not hasattr(self, '_all_reports'):
+                self._all_reports = []
             
-            # 如果当前显示的是专注度详情页面，则自动更新显示内容
-            if self.content_widget and self.content_layout.count() > 0:
-                # 检查第一个子组件是否为专注度数据详情组
-                first_item = self.content_layout.itemAt(0)
-                if first_item and first_item.widget() and first_item.widget().objectName() == "focus_data_group":
-                    # 重新显示专注度详情，使用最新的报告数据
-                    self._show_focus_details()
+            # 添加新报告
+            self._all_reports.insert(0, report_data)  # 最新的报告放在前面
             
-            # 记录日志表示报告已添加
-            logger.info(f"新的学习报告已添加: {report_data.get('session_id')}")
+            # 更新显示
+            if hasattr(self, '_update_focus_details_display'):
+                self._update_focus_details_display()
         except Exception as e:
             logger.error(f"添加学习报告失败: {e}")
     
