@@ -165,7 +165,7 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
             "embarrassed": "embarrassed",
             "funny": "funny",
             "happy": "happy",
-            "know": "know",  # 新增的know表情
+            "know": "know",  # 添加know表情
             "laughing": "laughing",
             "loving": "loving",
             "neutral": "neutral",
@@ -237,6 +237,11 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
             if re.search(r'\bnone\b', normalized_text):
                 self.logger.debug("检测到'none'，正在显示'know'表情")
                 await self.update_emotion("know")
+                return
+                
+        # 如果没有匹配到任何表情，默认使用"know"表情
+        self.logger.debug(f"未匹配到任何表情，使用默认'know'表情，文本: {text}")
+        await self.update_emotion("know")
 
     async def update_emotion(self, emotion_name: str):
         """
@@ -763,6 +768,7 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
                             str(self._find_emotion_file(emotion_dir, emotion_name))
                             or str(self._find_emotion_file(emotion_dir, formatted_name))
                             or str(self._find_emotion_file(emotion_dir, "Achievement Unlocked"))
+                            or str(self._find_emotion_file(emotion_dir, "know"))
                             or "😊"
                         )
             else:
