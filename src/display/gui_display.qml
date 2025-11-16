@@ -408,10 +408,7 @@ Rectangle {
         ColumnLayout {
             anchors.fill: parent
             spacing: 20
-            Layout.topMargin: 30
-            Layout.bottomMargin: 30
-            Layout.leftMargin: 30
-            Layout.rightMargin: 30
+            anchors.margins: 30
 
             // 第一行：倒计时区域（顶部）
             Rectangle {

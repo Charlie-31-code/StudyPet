@@ -54,9 +54,22 @@ class DetailsWindow(BaseWindow):
         # 学习报告目录
         self._report_dir = os.path.join(get_app_data_dir(), "config", "study_reports")
         
+        # 添加定时器用于定期更新数据
+        self._update_timer = QTimer(self)
+        self._update_timer.timeout.connect(self._update_display_data)
+        
         self._init_ui()
         # 延迟初始化报告列表，避免UI线程阻塞
-        QTimer.singleShot(0, self._delayed_initialization)
+        QTimer.singleShot(0, self._delayed_initialization_safe)
+    
+    def _delayed_initialization_safe(self):
+        """安全的延迟初始化"""
+        try:
+            if hasattr(self, '_delayed_initialization'):
+                self._delayed_initialization()
+        except RuntimeError:
+            # 窗口可能已被销毁
+            pass
     
 
         
@@ -70,7 +83,7 @@ class DetailsWindow(BaseWindow):
         main_layout.setSpacing(20)
 
         # 标题
-        title_label = QLabel("对话与学习详情")
+        title_label = QLabel("学习详情")
         title_label.setFont(QFont("PingFang SC", 16, QFont.Bold))
         title_label.setAlignment(Qt.AlignCenter)
         main_layout.addWidget(title_label)
@@ -78,21 +91,21 @@ class DetailsWindow(BaseWindow):
         # 按钮区域
         buttons_layout = QHBoxLayout()
         buttons_layout.setSpacing(15)
-
-        # 对话记录按钮
-        self.btn_conversation = QPushButton("与小智的对话记录")
-        self.btn_conversation.setMinimumHeight(40)
-        self.btn_conversation.setFont(QFont("PingFang SC", 12))
-        self.btn_conversation.clicked.connect(self.load_conversation_history)
-        buttons_layout.addWidget(self.btn_conversation)
-
+        
         # 专注度详情按钮
         self.btn_focus_details = QPushButton("学习模式专注度详情")
         self.btn_focus_details.setMinimumHeight(40)
         self.btn_focus_details.setFont(QFont("PingFang SC", 12))
         self.btn_focus_details.clicked.connect(self._show_focus_details)
         buttons_layout.addWidget(self.btn_focus_details)
-
+        
+        # 移除对话记录按钮
+        # self.btn_conversation = QPushButton("与小智的对话记录")
+        # self.btn_conversation.setMinimumHeight(40)
+        # self.btn_conversation.setFont(QFont("PingFang SC", 12))
+        # self.btn_conversation.clicked.connect(self._show_conversation_history)
+        # buttons_layout.addWidget(self.btn_conversation)
+        
         main_layout.addLayout(buttons_layout)
         
         # 内容展示区域
@@ -111,6 +124,44 @@ class DetailsWindow(BaseWindow):
         
         # 初始化时显示提示信息
         self._show_welcome_message()
+    
+    def showEvent(self, event):
+        """
+        窗口显示事件，启动定时更新.
+        """
+        super().showEvent(event)
+        # 启动定时器，每5秒更新一次数据
+        self._update_timer.start(5000)
+        # 立即更新一次数据
+        self._update_display_data()
+    
+    def hideEvent(self, event):
+        """
+        窗口隐藏事件，停止定时更新.
+        """
+        # 停止定时器
+        self._update_timer.stop()
+        super().hideEvent(event)
+    
+    def closeEvent(self, event):
+        """
+        处理窗口关闭事件.
+        """
+        # 停止定时器
+        self._update_timer.stop()
+        self.window_closed.emit()
+        event.accept()
+    
+    def _update_display_data(self):
+        """
+        更新显示数据.
+        """
+        # 如果当前显示的是专注度详情，则更新专注度详情
+        if self.content_widget.findChild(QGroupBox, "专注度数据详情") is not None:
+            self._show_focus_details()
+        # 如果当前显示的是对话记录，则更新对话记录
+        elif self.content_widget.findChild(QGroupBox, "对话记录") is not None:
+            self._load_conversation_history()
     
     def _show_welcome_message(self):
         """
@@ -295,7 +346,7 @@ class DetailsWindow(BaseWindow):
         elif distraction_count < 10:
             return "今天表现不错！虽然有一些分心，但整体专注度良好。再接再厉，相信你会做得更好！"
         else:
-            return "学习是一个需要坚持的过程，偶尔分心是正常的。明天让我们一起努力，提高专注度，你一定可以做到的！"
+            return "学习是一个需要坚持的过程，偶尔分心是正常的。明天我们一起努力，提高专注度，你一定可以做到的！"
     
     def _load_conversation_history(self):
         """
@@ -352,138 +403,62 @@ class DetailsWindow(BaseWindow):
                     
                     # 格式化时间显示
                     if timestamp:
-                        time_label = QLabel(f"[{timestamp}]");
+                        time_label = QLabel(f"[{timestamp}]")
+                        time_label.setFont(QFont("PingFang SC", 10))
                         time_label.setStyleSheet("font-weight: bold; color: #666666;")
                         msg_layout.addWidget(time_label)
                     
                     # 添加用户消息
                     if user_msg:
                         user_label = QLabel(f"用户: {user_msg}")
+                        user_label.setFont(QFont("PingFang SC", 11))
                         user_label.setWordWrap(True)
-                        user_label.setStyleSheet("margin-left: 10px;")
+                        user_label.setStyleSheet("margin-left: 10px; padding: 5px;")
+                        user_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
                         msg_layout.addWidget(user_label)
                     
                     # 添加AI回复
                     if ai_msg:
                         ai_label = QLabel(f"小智: {ai_msg}")
+                        ai_label.setFont(QFont("PingFang SC", 11))
                         ai_label.setWordWrap(True)
-                        ai_label.setStyleSheet("margin-left: 10px; color: #3366cc;")
+                        ai_label.setStyleSheet("margin-left: 10px; color: #3366cc; padding: 5px;")
+                        ai_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
                         msg_layout.addWidget(ai_label)
                     
                     # 添加分隔线
                     separator = QFrame()
                     separator.setFrameShape(QFrame.HLine)
                     separator.setFrameShadow(QFrame.Sunken)
+                    separator.setStyleSheet("background-color: #eeeeee;")
                     msg_layout.addWidget(separator)
                     
                     chat_layout.addWidget(msg_frame)
-                
-                # 添加弹簧以将内容推到顶部
-                chat_layout.addStretch()
             
-            chat_group.setLayout(chat_layout)
+            # 设置滚动区域内容
+            scroll_area = QScrollArea()
+            scroll_area.setWidgetResizable(True)
+            content_widget = QWidget()
+            content_widget.setLayout(chat_layout)
+            scroll_area.setWidget(content_widget)
+            
+            # 添加到主布局
+            chat_group_layout = QVBoxLayout()
+            chat_group_layout.addWidget(scroll_area)
+            chat_group.setLayout(chat_group_layout)
+            
             self.content_layout.addWidget(chat_group)
-            
-        except FileNotFoundError:
+        
+        except Exception as e:
+            logger.error(f"加载对话历史记录失败: {e}", exc_info=True)
+            # 如果出现异常，显示错误信息
             self._clear_content_area()
-            no_data_label = QLabel("暂无对话记录")
-            no_data_label.setFont(QFont("PingFang SC", 14))
-            no_data_label.setAlignment(Qt.AlignCenter)
-            no_data_label.setStyleSheet("color: #999999; margin: 50px;")
-            self.content_layout.addWidget(no_data_label)
-        except json.JSONDecodeError:
-            self._clear_content_area()
-            error_label = QLabel("对话记录文件格式错误")
+            error_label = QLabel("加载对话记录时发生错误")
             error_label.setFont(QFont("PingFang SC", 14))
             error_label.setAlignment(Qt.AlignCenter)
-            error_label.setStyleSheet("color: #999999; margin: 50px;")
-            self.content_layout.addWidget(error_label)
-        except Exception as e:
-            self._clear_content_area()
-            error_label = QLabel(f"加载对话记录时出错: {str(e)}")
-            error_label.setFont(QFont("PingFang SC", 14))
-            error_label.setAlignment(Qt.AlignCenter)
-            error_label.setStyleSheet("color: #999999; margin: 50px;")
+            error_label.setStyleSheet("color: #ff0000; margin: 50px;")
             self.content_layout.addWidget(error_label)
     
-    def _delayed_initialization(self):
-        """
-        延迟初始化操作，避免阻塞UI线程
-        """
-        # 初始化报告列表
-        self.refresh_report_list()
-        
-    def refresh_report_list(self):
-        """
-        刷新学习报告列表，从report_history.json加载所有报告
-        """
-        try:
-            report_dir = os.path.join(get_app_data_dir(), "config", "study_reports")
-            history_file = os.path.join(report_dir, "report_history.json")
-            
-            # 初始化报告列表属性
-            self._all_reports = []
-            
-            if os.path.exists(history_file):
-                with open(history_file, 'r', encoding='utf-8') as f:
-                    self._report_list = json.load(f)
-                    # 只保存报告列表信息，不立即加载所有报告的详细内容
-                    # 详细内容将在需要时（如点击查看）才加载
-        except Exception as e:
-            logger.error(f"刷新报告列表失败: {e}")
-    
-    def _load_all_study_reports(self, report_list):
-        """
-        加载并显示所有学习报告（按需加载）
-        
-        Args:
-            report_list: 报告列表数据
-        """
-        # 这里只保存报告列表，不立即加载所有报告详情
-        # 详细内容将在需要时（如点击查看）才加载
-        self._report_list = report_list
-        
-        # 仅在需要更新显示时加载最新的报告
-        if hasattr(self, '_update_focus_details_display'):
-            # 先尝试获取最新报告的详细信息
-            if report_list:
-                self._get_latest_study_report()
-            self._update_focus_details_display()
-    
-    def add_study_report(self, report_data):
-        """
-        添加新的学习报告
-        
-        Args:
-            report_data: 报告数据
-        """
-        try:
-            # 如果没有_all_reports属性，初始化它
-            if not hasattr(self, '_all_reports'):
-                self._all_reports = []
-            
-            # 添加新报告
-            self._all_reports.insert(0, report_data)  # 最新的报告放在前面
-            
-            # 更新显示
-            if hasattr(self, '_update_focus_details_display'):
-                self._update_focus_details_display()
-        except Exception as e:
-            logger.error(f"添加学习报告失败: {e}")
-    
-    def load_conversation_history(self):
-        """
-        公共方法：加载并显示对话历史记录
-        """
-        self._load_conversation_history()
-
-    def closeEvent(self, event):
-        """
-        处理窗口关闭事件.
-        """
-        self.window_closed.emit()
-        event.accept()
-
     def _add_visualization_charts(self, report):
         """
         添加可视化图表展示专注度数据.

@@ -428,8 +428,9 @@ class Application:
                                 conversations = []
                         
                         # 添加新对话（使用与DetailsWindow相同的格式）
+                        import time
                         conversations.append({
-                            'timestamp': timestamp,
+                            'timestamp': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp)),
                             'user': user_message,
                             'ai': message
                         })
@@ -444,11 +445,33 @@ class Application:
                             
                         logger.debug(f"对话已保存到文件: {user_message[:20]}...")
                         
+                        # 通知详情窗口更新对话记录
+                        try:
+                            if hasattr(self, '_details_window') and self._details_window:
+                                # 使用Qt的信号机制在主线程中更新UI
+                                from PyQt5.QtCore import QTimer
+                                QTimer.singleShot(0, lambda: self._update_details_window_conversation(user_message, message))
+                        except Exception as e:
+                            logger.error(f"通知详情窗口更新时出错: {e}")
+                        
                     except Exception as e:
                         logger.error(f"保存对话到文件时出错: {e}")
         except Exception as e:
             logger.error(f"保存对话记录时出错: {e}", exc_info=True)
-
+    
+    def _update_details_window_conversation(self, user_message: str, ai_message: str):
+        """
+        更新详情窗口中的对话记录显示
+        
+        Args:
+            user_message: 用户消息
+            ai_message: AI回复
+        """
+        try:
+            if hasattr(self, '_details_window') and self._details_window:
+                self._details_window.add_conversation(user_message, ai_message)
+        except Exception as e:
+            logger.error(f"更新详情窗口对话记录时出错: {e}")
     async def _on_audio_channel_opened(self):
         logger.info("协议通道已打开")
         # 通道打开后进入 LISTENING（：简化为直读直写）

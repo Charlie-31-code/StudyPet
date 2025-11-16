@@ -38,20 +38,26 @@ class StudyRecordWindow(BaseWindow):
         初始化学习记录窗口.
         
         Args:
-            parent: 父窗口
+            parent: 父级窗口
         """
         super().__init__(parent)
-        
         self.setWindowTitle("学习记录")
-        self.resize(600, 500)
-        self.setMinimumSize(500, 400)
+        self.setGeometry(100, 100, 800, 600)
+        self.setMinimumSize(600, 400)
         
-        # 学习报告目录
-        self._report_dir = os.path.join(get_app_data_dir(), "config", "study_reports")
+        # 获取应用数据目录
+        app_data_dir = get_app_data_dir()
+        self._report_dir = os.path.join(app_data_dir, "study_reports")
         
+        # 初始化UI
         self._init_ui()
-        # 延迟初始化报告列表，避免UI线程阻塞
-        QTimer.singleShot(0, self._delayed_initialization)
+        
+        # 初始化定时器用于定期更新数据
+        self._update_timer = QTimer(self)
+        self._update_timer.timeout.connect(self._update_study_details)
+        self._update_timer.start(5000)  # 每5秒更新一次
+        
+        logger.info("学习记录窗口初始化完成")
     
     def _init_ui(self):
         """
@@ -79,6 +85,13 @@ class StudyRecordWindow(BaseWindow):
         self.btn_study_details.clicked.connect(self._show_study_details)
         buttons_layout.addWidget(self.btn_study_details)
         
+        # 刷新按钮
+        self.btn_refresh = QPushButton("刷新")
+        self.btn_refresh.setMinimumHeight(40)
+        self.btn_refresh.setFont(QFont("PingFang SC", 12))
+        self.btn_refresh.clicked.connect(self._refresh_study_details)
+        buttons_layout.addWidget(self.btn_refresh)
+        
         # 导出学习报告按钮
         self.btn_export_report = QPushButton("导出学习报告")
         self.btn_export_report.setMinimumHeight(40)
@@ -105,6 +118,99 @@ class StudyRecordWindow(BaseWindow):
         # 初始化时显示提示信息
         self._show_welcome_message()
     
+    def showEvent(self, event):
+        """
+        窗口显示事件，启动定时更新.
+        """
+        super().showEvent(event)
+        # 启动定时器，每5秒更新一次数据
+        self._update_timer.start(5000)
+        # 立即更新一次数据
+        self._update_study_details()
+    
+    def hideEvent(self, event):
+        """
+        窗口隐藏事件，停止定时更新.
+        """
+        # 停止定时器
+        self._update_timer.stop()
+        super().hideEvent(event)
+    
+    def _refresh_study_details(self):
+        """
+        刷新学习详情.
+        """
+        # 停止定时器避免刷新过程中触发更新
+        self._update_timer.stop()
+        
+        try:
+            # 清除现有内容，提供即时反馈
+            self._clear_content_area()
+            
+            # 重新加载最新的学习报告数据并显示
+            # 先刷新报告列表
+            if self.refresh_report_list():
+                # 只有在报告列表刷新成功后才显示详情
+                self._show_study_details()
+            else:
+                # 如果刷新失败，显示错误信息
+                error_label = QLabel("数据刷新失败，请稍后重试")
+                error_label.setFont(QFont("PingFang SC", 10))
+                error_label.setStyleSheet("color: #ff0000; margin: 5px;")
+                error_label.setAlignment(Qt.AlignCenter)
+                self.content_layout.insertWidget(0, error_label)
+                
+                import weakref
+                error_label_ref = weakref.ref(error_label)
+                
+                def remove_error_label():
+                    label = error_label_ref()
+                    if label and hasattr(self, 'content_layout'):
+                        try:
+                            if label.parent() is not None:
+                                self.content_layout.removeWidget(label)
+                                label.deleteLater()
+                        except (RuntimeError, AttributeError):
+                            pass
+                
+                QTimer.singleShot(3000, remove_error_label)
+            
+            # 显示刷新成功的提示
+            refresh_label = QLabel("数据已刷新")
+            refresh_label.setFont(QFont("PingFang SC", 10))
+            refresh_label.setStyleSheet("color: #00aa00; margin: 5px;")
+            refresh_label.setAlignment(Qt.AlignCenter)
+            
+            # 将提示信息添加到内容区域的顶部
+            self.content_layout.insertWidget(0, refresh_label)
+            
+            # 使用弱引用避免循环引用问题
+            import weakref
+            refresh_label_ref = weakref.ref(refresh_label)
+            
+            # 3秒后自动移除提示信息
+            def remove_refresh_label():
+                # 检查窗口是否仍然存在
+                if not self or not hasattr(self, 'content_layout'):
+                    return
+                    
+                label = refresh_label_ref()
+                if label:
+                    try:
+                        # 检查标签是否仍有父级且仍在布局中
+                        if label.parent() is not None:
+                            self.content_layout.removeWidget(label)
+                            label.deleteLater()
+                    except RuntimeError:
+                        # 捕获可能的对象已删除错误
+                        pass
+            
+            QTimer.singleShot(3000, remove_refresh_label)
+            
+        finally:
+            # 无论成功与否都重新启动定时器
+            self._update_timer.start(5000)
+
     def _show_welcome_message(self):
         """
         显示欢迎信息.
@@ -117,8 +223,44 @@ class StudyRecordWindow(BaseWindow):
         welcome_label.setStyleSheet("color: #666666; margin: 50px;")
         
         self.content_layout.addWidget(welcome_label)
-    
-    
+
+    def _get_latest_study_report(self) -> Dict[str, Any]:
+        """
+        获取最新的学习报告数据.
+
+        Returns:
+            学习报告数据字典，如果没有则返回None
+        """
+        try:
+            if not os.path.exists(self._report_dir):
+                return None
+
+            # 获取所有报告文件，排除report_history.json索引文件
+            report_files = [f for f in os.listdir(self._report_dir) 
+                           if f.endswith('.json') and f != 'report_history.json']
+            if not report_files:
+                return None
+
+            # 按文件修改时间排序，获取最新的报告
+            report_files_with_time = []
+            for f in report_files:
+                file_path = os.path.join(self._report_dir, f)
+                report_files_with_time.append((f, os.path.getmtime(file_path)))
+
+            # 按修改时间排序，最新的在前
+            report_files_with_time.sort(key=lambda x: x[1], reverse=True)
+            latest_report = report_files_with_time[0][0]
+
+            # 读取报告内容
+            report_path = os.path.join(self._report_dir, latest_report)
+            with open(report_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            return data
+
+        except Exception as e:
+            logger.error(f"读取学习报告失败: {e}", exc_info=True)
+            return None
     
     def _get_encouragement_text(self, report_data: Dict[str, Any]) -> str:
         """
@@ -139,7 +281,7 @@ class StudyRecordWindow(BaseWindow):
         elif distraction_count < 10:
             return "今天表现不错！虽然有一些分心，但整体专注度良好。再接再厉，相信你会做得更好！"
         else:
-            return "学习是一个需要坚持的过程，偶尔分心是正常的。明天让我们一起努力，提高专注度，你一定可以做到的！"
+            return "学习是一个需要坚持的过程，偶尔分心是正常的。明天我们一起努力，提高专注度，你一定可以做到的！"
     
     def _clear_content_area(self):
         """
@@ -152,37 +294,6 @@ class StudyRecordWindow(BaseWindow):
             if widget:
                 widget.deleteLater()
     
-    def _get_latest_study_report(self) -> Dict[str, Any]:
-        """
-        获取最新的学习报告数据.
-        
-        Returns:
-            学习报告数据字典，如果没有则返回None
-        """
-        try:
-            if not os.path.exists(self._report_dir):
-                return None
-            
-            # 获取所有报告文件
-            report_files = [f for f in os.listdir(self._report_dir) if f.endswith('.json')]
-            if not report_files:
-                return None
-            
-            # 按文件名排序，获取最新的报告
-            report_files.sort(reverse=True)
-            latest_report = report_files[0]
-            
-            # 读取报告内容
-            report_path = os.path.join(self._report_dir, latest_report)
-            with open(report_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            
-            return data
-            
-        except Exception as e:
-            logger.error(f"读取学习报告失败: {e}", exc_info=True)
-            return None
-    
     def _delayed_initialization(self):
         """
         延迟初始化操作，避免阻塞UI线程
@@ -190,9 +301,12 @@ class StudyRecordWindow(BaseWindow):
         # 初始化报告列表
         self.refresh_report_list()
         
-    def refresh_report_list(self):
+    def refresh_report_list(self) -> bool:
         """
         刷新学习报告列表，从report_history.json加载所有报告
+
+        Returns:
+            bool: 成功返回True，失败返回False
         """
         try:
             report_dir = os.path.join(get_app_data_dir(), "config", "study_reports")
@@ -206,8 +320,14 @@ class StudyRecordWindow(BaseWindow):
                     self._report_list = json.load(f)
                     # 只保存报告列表信息，不立即加载所有报告的详细内容
                     # 详细内容将在需要时（如点击查看）才加载
+            else:
+                logger.warning(f"报告历史文件不存在: {history_file}")
+                self._report_list = []
+            return True
         except Exception as e:
-            logger.error(f"刷新报告列表失败: {e}")
+            logger.error(f"刷新报告列表失败: {e}", exc_info=True)
+            self._report_list = []
+            return False
     
     def _load_all_study_reports(self, report_list):
         """
@@ -252,9 +372,18 @@ class StudyRecordWindow(BaseWindow):
         """
         处理窗口关闭事件.
         """
+        # 停止定时器
+        self._update_timer.stop()
         self.window_closed.emit()
         event.accept()
 
+    def _update_study_details(self):
+        """
+        更新学习详情数据.
+        """
+        # 只有在学习详情页面显示时才更新
+        if self.content_widget.findChild(QGroupBox, "学习详情") is not None:
+            self._show_study_details()
 
     def _show_study_details(self):
         """

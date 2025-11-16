@@ -399,7 +399,7 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
 
     def _on_details_button_click(self):
         """
-        详情按钮点击事件处理.
+        详情按钮点击事件处理 - 直接显示学习详情
         """
         try:
             from src.views.details.details_window import DetailsWindow
@@ -408,14 +408,16 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
             if not hasattr(self, '_details_window') or self._details_window is None:
                 self._details_window = DetailsWindow(parent=self.root)
             
-            # 显示详情窗口并加载对话记录
+            # 显示详情窗口并直接显示学习详情
             self._details_window.show()
             self._details_window.raise_()
             self._details_window.activateWindow()
-            self._details_window.load_conversation_history()
+            
+            # 直接显示学习详情（专注度详情）
+            self._details_window._show_focus_details()
             
         except Exception as e:
-            self.logger.error(f"打开详情窗口失败: {e}", exc_info=True)
+            self.logger.error(f"打开学习详情失败: {e}", exc_info=True)
 
     def _on_manual_button_press(self):
         """
