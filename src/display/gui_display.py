@@ -242,10 +242,49 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
         """
         更新表情显示.
         """
-        # 不再检查是否与上一个表情相同，确保每次都会更新，支持学习模式中的动图表情
-        # if emotion_name == self._last_emotion_name:
-        #     return
+        # 检查是否处于学习模式
+        try:
+            study_mode_active = getattr(self.display_model, 'studyModeActive', False)
+            study_session_active = getattr(self.display_model, 'studySessionActive', False)
+        except Exception:
+            study_mode_active = False
+            study_session_active = False
+            
+        # 定义需要延长显示时间的特殊表情
+        special_emotions = [
+            "Achievement Unlocked", "Acrobatics", "Extremely Distracted", 
+            "Hurry up and study", "Level-Up Celebration", "Strong Reminder", 
+            "Study Hard", "Super Focused"
+        ]
+        
+        # 在学习模式下，增加额外的控制以避免过于频繁的更新
+        if study_mode_active and study_session_active:
+            import time
+            current_time = time.time()
+            last_update_time = getattr(self, '_last_emotion_display_time', 0)
+            
+            # 对于特殊表情，延长显示时间到10秒，普通表情3秒
+            min_interval = 10.0 if emotion_name in special_emotions else 3.0
+            
+            # 在学习模式下，控制更新频率
+            if emotion_name == self._last_emotion_name and (current_time - last_update_time) < min_interval:
+                self.logger.debug(f"学习模式下跳过表情更新: {emotion_name}，距离上次更新时间太短")
+                return
+                
+            # 更新最后显示时间
+            self._last_emotion_display_time = current_time
+            
+            # 在学习模式下，设置一个标志来阻止表情被自动重置为neutral
+            self._study_mode_emotion_lock = True
+            self._study_mode_current_emotion = emotion_name
 
+        # 检查是否在学习模式下尝试重置为neutral，如果是则阻止
+        if emotion_name == "neutral" and getattr(self, '_study_mode_emotion_lock', False):
+            self.logger.debug("学习模式下阻止表情重置为neutral")
+            return
+
+        # 总是尝试更新表情，即使与上次相同
+        self.logger.debug(f"正在更新表情为: {emotion_name}")
         self._last_emotion_name = emotion_name
         asset_path = self._get_emotion_asset_path(emotion_name)
 
@@ -265,8 +304,10 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
             return p
 
         url_or_text = to_qml_url(asset_path)
+        self.logger.debug(f"表情资源路径: {asset_path}, QML URL: {url_or_text}")
+        
+        # 直接更新表情，由 QML 的 AnimatedImage 自动处理 GIF 动画重播
         self.display_model.update_emotion(url_or_text)
-        self.logger.debug(f"更新表情为: {emotion_name}, 路径: {url_or_text}")
 
     async def update_button_status(self, text: str):
         """
@@ -692,14 +733,48 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
             path = "😊"
         else:
             emotion_dir = assets_dir / "emojis"
-            # 尝试查找表情文件，失败则回退到 know（新的默认表情）
-            path = (
-                str(self._find_emotion_file(emotion_dir, emotion_name))
-                or str(self._find_emotion_file(emotion_dir, "know"))
-                or "😊"
-            )
+            # 检查是否处于学习模式
+            try:
+                study_mode_active = getattr(self.display_model, 'studyModeActive', False)
+            except Exception:
+                study_mode_active = False
+                
+            self.logger.debug(f"获取表情资源路径: {emotion_name}, 学习模式: {study_mode_active}")
+                
+            # 在学习模式下，优先使用emojis目录下的GIF文件
+            if study_mode_active:
+                # 首先尝试直接使用传入的名称（适用于acrobatics等小写名称）
+                direct_path = emotion_dir / f"{emotion_name}.gif"
+                self.logger.debug(f"尝试直接路径: {direct_path}")
+                if direct_path.exists():
+                    path = str(direct_path)
+                    self.logger.debug(f"找到直接路径文件: {path}")
+                else:
+                    # 将表情名称转换为文件名格式（首字母大写，空格分隔）
+                    formatted_name = " ".join(word.capitalize() for word in emotion_name.split())
+                    gif_path = emotion_dir / f"{formatted_name}.gif"
+                    self.logger.debug(f"尝试格式化路径: {gif_path}")
+                    if gif_path.exists():
+                        path = str(gif_path)
+                        self.logger.debug(f"找到格式化路径文件: {path}")
+                    else:
+                        # 如果指定名称的GIF不存在，尝试查找其他同名格式
+                        path = (
+                            str(self._find_emotion_file(emotion_dir, emotion_name))
+                            or str(self._find_emotion_file(emotion_dir, formatted_name))
+                            or str(self._find_emotion_file(emotion_dir, "Achievement Unlocked"))
+                            or "😊"
+                        )
+            else:
+                # 非学习模式下按原有逻辑处理
+                path = (
+                    str(self._find_emotion_file(emotion_dir, emotion_name))
+                    or str(self._find_emotion_file(emotion_dir, "know"))
+                    or "😊"
+                )
 
         self._emotion_cache[emotion_name] = path
+        self.logger.debug(f"表情资源路径结果: {path}")
         return path
 
     def _find_emotion_file(self, emotion_dir: Path, name: str) -> Optional[Path]:

@@ -425,13 +425,112 @@ class UIPlugin(Plugin):
                                         self.display.display_model.petState = status
                                     except Exception:
                                         pass
-                                    # 根据状态修改表情
-                                    if status == "focused":
-                                        self.display.update_emotion("focus")
-                                    elif status == "distracted":
-                                        self.display.update_emotion("sad")
-                                    else:
-                                        self.display.update_emotion("neutral")
+                                    
+                                    # 检查是否处于学习模式
+                                    try:
+                                        study_mode_active = getattr(self.display.display_model, 'studyModeActive', False)
+                                        study_session_active = getattr(self.display.display_model, 'studySessionActive', False)
+                                    except Exception:
+                                        study_mode_active = False
+                                        study_session_active = False
+                                    
+                                    # 只在学习模式下更新表情和语音播报
+                                    if study_mode_active and study_session_active:
+                                        # 添加状态持续时间控制，避免表情过快切换
+                                        import time
+                                        current_time = time.time()
+                                        
+                                        # 获取上次状态更新时间
+                                        last_update_time = getattr(self, '_last_emotion_update_time', 0)
+                                        last_status = getattr(self, '_last_face_status', '')
+                                        
+                                        # 定义需要延长显示时间的特殊状态到表情映射
+                                        special_emotion_map = {
+                                            "focused": "Super Focused",
+                                            "distracted": "Extremely Distracted", 
+                                            "absent": "Strong Reminder",
+                                            "blocked": "Hurry up and study",
+                                            "achievement unlocked": "Achievement Unlocked",
+                                            "acrobatics": "Acrobatics",
+                                            "extremely distracted": "Extremely Distracted",
+                                            "hurry up and study": "Hurry up and study",
+                                            "level-up celebration": "Level-Up Celebration",
+                                            "strong reminder": "Strong Reminder",
+                                            "study hard": "Study Hard",
+                                            "super focused": "Super Focused"
+                                        }
+                                        
+                                        # 检查是否需要更新表情
+                                        should_update = False
+                                        # 如果状态发生变化，立即更新表情
+                                        if status != last_status:
+                                            should_update = True
+                                            self.display.logger.debug(f"状态发生变化: {last_status} -> {status}, 即将更新表情")
+                                        # 如果状态相同，但距离上次更新超过5秒，也要更新（确保表情持续播放）
+                                        elif status == last_status and (current_time - last_update_time) > 5.0:
+                                            should_update = True
+                                            self.display.logger.debug(f"状态未变但超过5秒: {status}, 重新更新表情确保持续播放")
+                                        # 特殊处理：对于blocked状态，确保表情持续显示
+                                        elif status == "blocked" and status == last_status and (current_time - last_update_time) > 5.0:
+                                            should_update = True
+                                        
+                                        if should_update:
+                                            # 根据状态修改表情，使用指定的表情包
+                                            emotion_map = {
+                                                "focused": "Super Focused",
+                                                "distracted": "Extremely Distracted", 
+                                                "absent": "Strong Reminder",
+                                                "blocked": "Hurry up and study"
+                                            }
+                                            
+                                            # 获取对应的表情名称，如果没有匹配则使用默认的Achievement Unlocked
+                                            emotion_name = emotion_map.get(status, "Achievement Unlocked")
+                                            
+                                            self.display.logger.debug(f"映射状态到表情: {status} -> {emotion_name}")
+                                            
+                                            # 调度表情更新
+                                            self.app.schedule_command_nowait(
+                                                lambda en=emotion_name: self.display.update_emotion(en)
+                                            )
+                                            
+                                            # 更新最后更新时间和状态
+                                            self._last_emotion_update_time = current_time
+                                            self._last_face_status = status
+                                            # 使用display的logger而不是self.logger
+                                            self.display.logger.debug(f"更新学习模式表情: {status} -> {emotion_name}")
+                                            
+                                            # 添加学习模式下的语音播报（降低频率）
+                                            try:
+                                                status_messages = {
+                                                    "focused": "太棒了，你很专注哦！",
+                                                    "distracted": "注意注意力，回到学习中来！",
+                                                    "absent": "咦，你去哪了？快回来学习吧！",
+                                                    "blocked": "不要遮挡摄像头，让我看到你！"
+                                                }
+                                                
+                                                message = status_messages.get(status)
+                                                if message:
+                                                    # 检查是否需要播报语音（控制频率）
+                                                    last_voice_time = getattr(self, '_last_voice_time', {})
+                                                    last_voice_timestamp = last_voice_time.get(status, 0)
+                                                    current_timestamp = time.time()
+                                                    
+                                                    # 定义播报间隔（秒）
+                                                    voice_intervals = {
+                                                        "focused": 30,  # 专注状态每30秒播报一次
+                                                        "distracted": 60,  # 分心状态每60秒播报一次
+                                                        "absent": 60,  # 离开状态每60秒播报一次
+                                                        "blocked": 60   # 遮挡状态每60秒播报一次
+                                                    }
+                                                    
+                                                    interval = voice_intervals.get(status, 60)
+                                                    
+                                                    if current_timestamp - last_voice_timestamp >= interval:
+                                                        from src.utils.common_utils import play_audio_nonblocking
+                                                        play_audio_nonblocking(message)
+                                                        self._last_voice_time[status] = current_timestamp
+                                            except Exception as e:
+                                                self.display.logger.error(f"学习模式语音播报出错: {e}")
                                 except Exception:
                                     pass
 
