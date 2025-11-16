@@ -270,7 +270,7 @@ class DetailsWindow(BaseWindow):
                 entry_layout.addWidget(time_label)
                 
                 # 显示用户提问
-                user_label = QLabel(f"<b>你：</b>{entry.get("user", "")}")
+                user_label = QLabel(f'<b>你：</b>{entry.get("user", "")}')
                 user_label.setFont(QFont("PingFang SC", 12))
                 user_label.setWordWrap(True)
                 user_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
@@ -278,7 +278,7 @@ class DetailsWindow(BaseWindow):
                 entry_layout.addWidget(user_label)
                 
                 # 显示小智回答
-                ai_label = QLabel(f"<b>小智：</b>{entry.get("ai", "")}")
+                ai_label = QLabel(f'<b>小智：</b>{entry.get("ai", "")}')
                 ai_label.setFont(QFont("PingFang SC", 12))
                 ai_label.setWordWrap(True)
                 ai_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
