@@ -673,9 +673,18 @@ class StudyRecordWindow(BaseWindow):
             # 读取最新的学习报告
             report_data = self._get_latest_study_report()
             
+            # 如果没有学习报告，则从日志中解析数据
             if not report_data or 'report' not in report_data:
-                QMessageBox.warning(self, "导出失败", "没有可导出的学习报告数据")
-                return
+                session_data = self._parse_log_for_study_data()
+                if not session_data:
+                    QMessageBox.warning(self, "导出失败", "没有可导出的学习报告数据")
+                    return
+                
+                # 构造与报告数据结构相同的数据
+                report_data = {
+                    'report': session_data,
+                    'timestamp': time.time()
+                }
             
             # 获取报告数据
             report = report_data['report']
@@ -687,6 +696,7 @@ class StudyRecordWindow(BaseWindow):
 ====================
 
 报告生成时间: {time_str}
+数据来源: {"学习报告文件" if 'start_time' in report else "实时日志分析"}
 
 学习详情:
 --------
