@@ -131,14 +131,119 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
         更新 TTS 文本.
         """
         self.display_model.update_text(text)
+        
+        # 检查文本中是否包含表情名称，如果包含则更新表情
+        await self._check_and_update_emotion_from_text(text)
+
+    async def _check_and_update_emotion_from_text(self, text: str):
+        """
+        检查文本中是否包含表情名称，如果包含则更新表情显示.
+        """
+        if not text:
+            return
+
+        # 定义表情关键词映射，直接映射到文件名
+        emotion_mapping = {
+            # 复合词表情
+            "achievement unlocked": "Achievement Unlocked",
+            "extremely distracted": "Extremely Distracted",
+            "hurry up and study": "Hurry up and study",
+            "level up celebration": "Level-Up Celebration",
+            "level-up celebration": "Level-Up Celebration",
+            "strong reminder": "Strong Reminder",
+            "study hard": "Study Hard",
+            "super focused": "Super Focused",
+            
+            # 单词表情
+            "acrobatics": "acrobatics",
+            "angry": "angry",
+            "boring": "boring",
+            "confident": "confident",
+            "confused": "confused",
+            "crying": "crying",
+            "delicious": "delicious",
+            "embarrassed": "embarrassed",
+            "funny": "funny",
+            "happy": "happy",
+            "know": "know",  # 新增的know表情
+            "laughing": "laughing",
+            "loving": "loving",
+            "neutral": "neutral",
+            "relaxed": "relaxed",
+            "sad": "sad",
+            "shocked": "shocked",
+            "shy": "shy",
+            "silly": "silly",
+            "sleepy": "sleepy",
+            "surprised": "surprised",
+            "thinking": "thinking",
+            "winking": "winking",
+            
+            # 中文关键词映射
+            "成就": "Achievement Unlocked",
+            "分心": "Extremely Distracted",
+            "学习": "Hurry up and study",
+            "升级": "Level-Up Celebration",
+            "提醒": "Strong Reminder",
+            "努力": "Study Hard",
+            "专注": "Super Focused",
+            "杂技": "acrobatics",
+            "生气": "angry",
+            "无聊": "boring",
+            "自信": "confident",
+            "困惑": "confused",
+            "哭泣": "crying",
+            "美味": "delicious",
+            "尴尬": "embarrassed",
+            "搞笑": "funny",
+            "开心": "happy",
+            "知道": "know",  # 中文关键词映射到know表情
+            "笑": "laughing",
+            "喜爱": "loving",
+            "放松": "relaxed",
+            "伤心": "sad",
+            "惊讶": "surprised",
+            "害羞": "shy",
+            "困": "sleepy",
+            "思考": "thinking",
+            "眨眼": "winking"
+        }
+
+        # 将输入文本转为小写并移除多余空格
+        normalized_text = ' '.join(text.lower().split())
+        
+        # 检查是否包含任何表情关键词
+        for keyword, emotion_name in emotion_mapping.items():
+            if keyword in normalized_text:
+                self.logger.debug(f"检测到表情关键词: '{keyword}'，正在显示表情: {emotion_name}")
+                await self.update_emotion(emotion_name)
+                return
+                
+        # 如果没有找到精确匹配，尝试部分匹配
+        # 这将使单个词也能触发复合词表情
+        for keyword, emotion_name in emotion_mapping.items():
+            # 分割关键词并检查每个部分
+            keyword_parts = keyword.split()
+            for part in keyword_parts:
+                if part in normalized_text:
+                    self.logger.debug(f"检测到部分表情关键词: '{part}'，正在显示表情: {emotion_name}")
+                    await self.update_emotion(emotion_name)
+                    return
+                    
+        # 特殊处理：如果文本包含"none"但不包含其他表情关键词，则显示"know"表情
+        if "none" in normalized_text:
+            # 确保"none"不是其他词的一部分（例如"none"应该匹配，但"knowledge"不应该匹配）
+            import re
+            if re.search(r'\bnone\b', normalized_text):
+                self.logger.debug("检测到'none'，正在显示'know'表情")
+                await self.update_emotion("know")
 
     async def update_emotion(self, emotion_name: str):
         """
         更新表情显示.
         """
-        if emotion_name == self._last_emotion_name:
-            return
-
+        # 总是尝试更新表情，即使与上次相同
+        self.logger.debug(f"正在更新表情为: {emotion_name}")
         self._last_emotion_name = emotion_name
         asset_path = self._get_emotion_asset_path(emotion_name)
 
@@ -582,10 +687,10 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
             path = "😊"
         else:
             emotion_dir = assets_dir / "emojis"
-            # 尝试查找表情文件，失败则回退到 neutral
+            # 尝试查找表情文件，失败则回退到 know（新的默认表情）
             path = (
                 str(self._find_emotion_file(emotion_dir, emotion_name))
-                or str(self._find_emotion_file(emotion_dir, "neutral"))
+                or str(self._find_emotion_file(emotion_dir, "know"))
                 or "😊"
             )
 
