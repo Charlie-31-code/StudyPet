@@ -2,6 +2,10 @@
 # Copyright (c) 2025 StudyPet Team(Charlie-31-code,Mia-au,Xenia-www,Sylvia0601)
 # MIT License
 
+import os
+# 解决OpenMP库冲突问题
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
+
 import argparse
 import asyncio
 import signal

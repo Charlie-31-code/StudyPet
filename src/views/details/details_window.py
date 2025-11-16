@@ -8,6 +8,7 @@ import json
 import logging
 import threading
 import time
+import re
 from typing import List, Dict, Any
 from PyQt5.QtWidgets import (
     QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, 
@@ -176,14 +177,56 @@ class DetailsWindow(BaseWindow):
         
         self.content_layout.addWidget(welcome_label)
     
+    def _parse_log_for_study_data(self) -> Dict[str, Any]:
+        """
+        从日志文件中解析学习数据
+        """
+        try:
+            # 获取日志文件路径
+            log_file_path = os.path.join(get_app_data_dir(), "logs", "app.log")
+            if not os.path.exists(log_file_path):
+                return None
+
+            # 读取日志文件
+            with open(log_file_path, 'r', encoding='utf-8') as f:
+                log_lines = f.readlines()
+
+            # 查找最新的FaceMonitor会话结束记录
+            session_end_pattern = r"FaceMonitor.*会话.*结束.*\{'duration': ([\d.]+), 'avg_score': ([\d.]+), 'focused_count': (\d+), 'distracted_count': (\d+), 'absent_count': (\d+), 'blocked_count': (\d+), 'total_checks': (\d+)\}"
+            
+            latest_session_data = None
+            for line in reversed(log_lines):  # 从后往前查找最新的记录
+                match = re.search(session_end_pattern, line)
+                if match:
+                    latest_session_data = {
+                        'duration': float(match.group(1)),
+                        'avg_score': float(match.group(2)),
+                        'focused_count': int(match.group(3)),
+                        'distracted_count': int(match.group(4)),
+                        'absent_count': int(match.group(5)),
+                        'blocked_count': int(match.group(6)),
+                        'total_checks': int(match.group(7))
+                    }
+                    break
+            
+            return latest_session_data
+        except Exception as e:
+            logger.error(f"解析日志文件失败: {e}", exc_info=True)
+            return None
+
     def _show_focus_details(self):
         """
         显示学习模式专注度详情，使用真实的学习报告数据.
         """
         self._clear_content_area()
         
-        # 读取最新的学习报告
+        # 首先尝试从学习报告获取数据
         report_data = self._get_latest_study_report()
+        session_data = None
+        
+        # 如果没有学习报告，则从日志中解析数据
+        if not report_data or 'report' not in report_data:
+            session_data = self._parse_log_for_study_data()
         
         # 处理学习报告数据
         if report_data and 'report' in report_data:
@@ -259,6 +302,75 @@ class DetailsWindow(BaseWindow):
                 self.content_layout.addWidget(time_label)
                 
                 return
+        elif session_data:
+            # 使用从日志中解析的数据
+            # 创建专注度数据展示组
+            focus_group = QGroupBox("专注度数据详情")
+            focus_group.setFont(QFont("PingFang SC", 13, QFont.Bold))
+            
+            grid_layout = QGridLayout()
+            grid_layout.setSpacing(15)
+            
+            # 显示各项真实数据
+            data_items = [
+                ("专注次数", session_data.get("focused_count", 0)),
+                ("分心次数", session_data.get("distracted_count", 0)),
+                ("离开次数", session_data.get("absent_count", 0)),
+                ("遮挡摄像头次数", session_data.get("blocked_count", 0)),
+                ("总检测次数", session_data.get("total_checks", 0)),
+                ("平均专注度分数", f"{int(session_data.get('avg_score', 0))}分")
+            ]
+            
+            # 计算专注时长
+            duration_seconds = session_data.get("duration", 0)
+            minutes = int(duration_seconds // 60)
+            seconds = int(duration_seconds % 60)
+            duration_text = f"{minutes}分{seconds}秒"
+            data_items.append(("专注学习时长", duration_text))
+            
+            for i, (label_text, value) in enumerate(data_items):
+                label = QLabel(f"{label_text}:")
+                label.setFont(QFont("PingFang SC", 12))
+                label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                
+                value_label = QLabel(str(value))
+                value_label.setFont(QFont("PingFang SC", 12, QFont.Bold))
+                value_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                value_label.setStyleSheet("color: #3366cc;")
+                
+                grid_layout.addWidget(label, i, 0)
+                grid_layout.addWidget(value_label, i, 1)
+            
+            focus_group.setLayout(grid_layout)
+            self.content_layout.addWidget(focus_group)
+            
+            # 添加可视化图表
+            self._add_visualization_charts(session_data)
+            
+            # 添加鼓励话语
+            encouragement_group = QGroupBox("鼓励话语")
+            encouragement_group.setFont(QFont("PingFang SC", 13, QFont.Bold))
+            
+            encouragement_text = self._get_encouragement_text(session_data)
+            encouragement_label = QLabel(encouragement_text)
+            encouragement_label.setFont(QFont("PingFang SC", 12))
+            encouragement_label.setWordWrap(True)
+            encouragement_label.setStyleSheet("color: #ff6600; padding: 10px;")
+            
+            encouragement_layout = QVBoxLayout()
+            encouragement_layout.addWidget(encouragement_label)
+            encouragement_group.setLayout(encouragement_layout)
+            
+            # 添加数据来源说明
+            time_label = QLabel("数据来源: 实时日志分析")
+            time_label.setFont(QFont("PingFang SC", 10))
+            time_label.setStyleSheet("color: #999999; margin-top: 10px;")
+            
+            # 添加到布局
+            self.content_layout.addWidget(encouragement_group)
+            self.content_layout.addWidget(time_label)
+            
+            return
         
         # 如果没有有效数据，显示提示信息
         no_data_label = QLabel("暂无学习报告数据")
@@ -338,10 +450,11 @@ class DetailsWindow(BaseWindow):
         Returns:
             鼓励话语文本
         """
-        distraction_count = report_data.get("distraction_count", 0)
-        focus_duration = report_data.get("focus_duration", "0分钟")
+        distraction_count = report_data.get("distracted_count", 0) or report_data.get("distraction_count", 0)
+        duration_seconds = report_data.get("duration", 0)
+        minutes = int(duration_seconds // 60)
         
-        if distraction_count < 5 and focus_duration.startswith("4"):
+        if distraction_count < 5 and minutes >= 30:
             return "太棒了！你今天的专注度非常棒，继续保持这样的学习状态，你一定会取得很大的进步！"
         elif distraction_count < 10:
             return "今天表现不错！虽然有一些分心，但整体专注度良好。再接再厉，相信你会做得更好！"
