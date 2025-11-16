@@ -22,6 +22,7 @@ Rectangle {
     signal studyStartClicked()
     signal studyStartAlreadyClicked()
     signal studyStopClicked()
+    signal studyRecordButtonClicked()
     // 标题栏相关信号
     signal titleMinimize()
     signal titleClose()
@@ -774,7 +775,7 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 70
                 Layout.alignment: Qt.AlignHCenter
-                spacing: 100
+                spacing: 50
                 
                 Button {
                     id: studyStartBtn
@@ -801,6 +802,28 @@ Rectangle {
                         } else {
                             cameraDialog.open()
                         }
+                    }
+                }
+
+                Button {
+                    id: studyRecordBtn
+                    Layout.preferredWidth: 150
+                    Layout.preferredHeight: 60
+                    text: "学习记录"
+                    background: Rectangle { 
+                        color: "#4caf50"
+                        radius: 5
+                    }
+                    contentItem: Text { 
+                        text: studyRecordBtn.text; 
+                        color: "white"; 
+                        font.pixelSize: 20
+                        font.weight: Font.Medium
+                        horizontalAlignment: Text.AlignHCenter; 
+                        verticalAlignment: Text.AlignVCenter 
+                    }
+                    onClicked: {
+                        root.studyRecordButtonClicked()
                     }
                 }
 

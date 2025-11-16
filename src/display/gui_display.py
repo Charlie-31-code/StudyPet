@@ -372,6 +372,7 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
             "studyStartClicked": self._on_study_start_click,
             "studyStartAlreadyClicked": self._on_study_start_already_click,
             "studyStopClicked": self._on_study_stop_click,
+            "studyRecordButtonClicked": self._on_study_record_button_click,
         }
 
         # 标题栏控制信号映射
@@ -407,10 +408,11 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
             if not hasattr(self, '_details_window') or self._details_window is None:
                 self._details_window = DetailsWindow(parent=self.root)
             
-            # 显示详情窗口
+            # 显示详情窗口并加载对话记录
             self._details_window.show()
             self._details_window.raise_()
             self._details_window.activateWindow()
+            self._details_window.load_conversation_history()
             
         except Exception as e:
             self.logger.error(f"打开详情窗口失败: {e}", exc_info=True)
@@ -479,6 +481,25 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
         学习模式停止/退出按钮。
         """
         self._dispatch_callback("study_stop")
+
+    def _on_study_record_button_click(self):
+        """
+        学习记录按钮点击事件处理。
+        """
+        try:
+            from src.views.study_record.study_record_window import StudyRecordWindow
+            
+            # 检查学习记录窗口是否已存在，避免重复创建
+            if not hasattr(self, '_study_record_window') or self._study_record_window is None:
+                self._study_record_window = StudyRecordWindow(parent=self.root)
+            
+            # 显示学习记录窗口
+            self._study_record_window.show()
+            self._study_record_window.raise_()
+            self._study_record_window.activateWindow()
+            
+        except Exception as e:
+            self.logger.error(f"打开学习记录窗口失败: {e}", exc_info=True)
 
     def _on_send_button_click(self, text: str):
         """
@@ -717,6 +738,7 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
         except Exception as e:
             self.logger.error(f"关闭应用程序失败: {e}")
             QApplication.quit()
+
 
     def _closeEvent(self, event):
         """

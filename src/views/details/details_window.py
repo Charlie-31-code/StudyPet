@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-详情窗口 - 用于展示学习模式专注度详情和对话记录.
+详情窗口 - 用于展示学习模式专注度详情.
 """
 
 import os
@@ -49,34 +49,11 @@ class DetailsWindow(BaseWindow):
         # 学习报告目录
         self._report_dir = os.path.join(get_app_data_dir(), "config", "study_reports")
         
-        # 对话记录存储和锁
-        self._conversation_history = []
-        self._conversation_lock = threading.Lock()
-        self._app = Application.get_instance()
-        
-        # 对话历史文件路径
-        self._chat_history_file = os.path.join(get_app_data_dir(), "config", "chat_history.json")
-        
         self._init_ui()
-        # 移除未实现的_load_conversation_history方法调用
-        self._load_chat_history_from_file()
         # 延迟初始化报告列表，避免UI线程阻塞
         QTimer.singleShot(0, self._delayed_initialization)
     
-    def _load_chat_history_from_file(self):
-        """
-        从文件加载历史对话记录
-        """
-        try:
-            if os.path.exists(self._chat_history_file):
-                with self._conversation_lock:
-                    with open(self._chat_history_file, 'r', encoding='utf-8') as f:
-                        conversations = json.load(f)
-                        
-                        # 直接更新内部对话历史，避免重复调用add_conversation
-                        self._conversation_history = conversations
-        except Exception as e:
-            logger.error(f"加载对话历史时出错: {e}")
+
         
     def _init_ui(self):
         """
@@ -86,31 +63,31 @@ class DetailsWindow(BaseWindow):
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(20)
-        
+
         # 标题
-        title_label = QLabel("学习与对话详情")
+        title_label = QLabel("对话与学习详情")
         title_label.setFont(QFont("PingFang SC", 16, QFont.Bold))
         title_label.setAlignment(Qt.AlignCenter)
         main_layout.addWidget(title_label)
-        
+
         # 按钮区域
         buttons_layout = QHBoxLayout()
         buttons_layout.setSpacing(15)
-        
+
+        # 对话记录按钮
+        self.btn_conversation = QPushButton("与小智的对话记录")
+        self.btn_conversation.setMinimumHeight(40)
+        self.btn_conversation.setFont(QFont("PingFang SC", 12))
+        self.btn_conversation.clicked.connect(self.load_conversation_history)
+        buttons_layout.addWidget(self.btn_conversation)
+
         # 专注度详情按钮
         self.btn_focus_details = QPushButton("学习模式专注度详情")
         self.btn_focus_details.setMinimumHeight(40)
         self.btn_focus_details.setFont(QFont("PingFang SC", 12))
         self.btn_focus_details.clicked.connect(self._show_focus_details)
         buttons_layout.addWidget(self.btn_focus_details)
-        
-        # 对话记录按钮
-        self.btn_conversation = QPushButton("与小智的对话记录")
-        self.btn_conversation.setMinimumHeight(40)
-        self.btn_conversation.setFont(QFont("PingFang SC", 12))
-        self.btn_conversation.clicked.connect(self._show_conversation_history)
-        buttons_layout.addWidget(self.btn_conversation)
-        
+
         main_layout.addLayout(buttons_layout)
         
         # 内容展示区域
@@ -231,145 +208,7 @@ class DetailsWindow(BaseWindow):
         
         self.content_layout.addWidget(no_data_label)
     
-    def _show_conversation_history(self):
-        """
-        显示与小智的真实对话记录.
-        """
-        self._clear_content_area()
-        
-        # 创建通话记录展示区域
-        history_group = QGroupBox("对话记录")
-        history_group.setFont(QFont("PingFang SC", 13, QFont.Bold))
-        
-        # 创建滚动区域
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        
-        # 内容容器
-        content_widget = QWidget()
-        content_layout = QVBoxLayout(content_widget)
-        content_layout.setSpacing(15)
-        content_layout.setAlignment(Qt.AlignTop)
-        
-        # 读取对话历史记录
-        conversation_history = self._get_conversation_history()
-        
-        if conversation_history:
-            # 显示每条对话记录
-            for entry in conversation_history:
-                # 创建对话条目容器
-                entry_widget = QWidget()
-                entry_layout = QVBoxLayout(entry_widget)
-                entry_layout.setSpacing(5)
-                
-                # 显示时间
-                time_label = QLabel(entry.get("time", "未知时间"))
-                time_label.setFont(QFont("PingFang SC", 10))
-                time_label.setStyleSheet("color: #999999;")
-                entry_layout.addWidget(time_label)
-                
-                # 显示用户提问
-                user_label = QLabel(f'<b>你：</b>{entry.get("user", "")}')
-                user_label.setFont(QFont("PingFang SC", 12))
-                user_label.setWordWrap(True)
-                user_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
-                user_label.setStyleSheet("background-color: #f0f7ff; padding: 8px; border-radius: 5px;")
-                entry_layout.addWidget(user_label)
-                
-                # 显示小智回答
-                ai_label = QLabel(f'<b>小智：</b>{entry.get("ai", "")}')
-                ai_label.setFont(QFont("PingFang SC", 12))
-                ai_label.setWordWrap(True)
-                ai_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
-                ai_label.setStyleSheet("background-color: #f0fff0; padding: 8px; border-radius: 5px;")
-                entry_layout.addWidget(ai_label)
-                
-                # 添加分割线
-                separator = QFrame()
-                separator.setFrameShape(QFrame.HLine)
-                separator.setFrameShadow(QFrame.Sunken)
-                separator.setStyleSheet("background-color: #eeeeee;")
-                entry_layout.addWidget(separator)
-                
-                content_layout.addWidget(entry_widget)
-        else:
-            # 如果没有对话记录，显示提示信息
-            no_data_label = QLabel("暂无对话记录")
-            no_data_label.setFont(QFont("PingFang SC", 14))
-            no_data_label.setAlignment(Qt.AlignCenter)
-            no_data_label.setStyleSheet("color: #999999; margin: 50px;")
-            content_layout.addWidget(no_data_label)
-        
-        # 设置滚动区域内容
-        scroll_area.setWidget(content_widget)
-        
-        # 添加到主布局
-        history_layout = QVBoxLayout()
-        history_layout.addWidget(scroll_area)
-        history_group.setLayout(history_layout)
-        
-        self.content_layout.addWidget(history_group)
-        
-    def _get_conversation_history(self):
-        """
-        获取对话历史记录，从存储文件中读取真实的对话记录.
-        """
-        try:
-            # 确保目录存在
-            os.makedirs(os.path.dirname(self._chat_history_file), exist_ok=True)
-            
-            # 尝试读取对话历史文件
-            if os.path.exists(self._chat_history_file):
-                with self._conversation_lock:
-                    with open(self._chat_history_file, 'r', encoding='utf-8') as f:
-                        return json.load(f)
-            return []
-        except Exception as e:
-            print(f"读取对话历史失败: {e}")
-            return []
-    
-    def add_conversation(self, user_message, ai_response, silent=False):
-        """
-        添加新的对话记录.
-        此方法可以被Application调用，在每次用户与AI交互后保存对话.
-        
-        Args:
-            user_message: 用户的消息
-            ai_response: AI的回复
-            silent: 是否静默添加（用于加载历史记录时不显示通知）
-        """
-        try:
-            # 获取当前时间
-            current_time = QDateTime.currentDateTime().toString("yyyy-MM-dd HH:mm:ss")
-            
-            # 创建新的对话条目
-            new_entry = {
-                "time": current_time,
-                "user": user_message,
-                "ai": ai_response
-            }
-            
-            # 读取现有对话历史
-            history = self._get_conversation_history()
-            
-            # 添加新条目
-            history.append(new_entry)
-            
-            # 限制历史记录数量，只保留最近的100条
-            if len(history) > 100:
-                history = history[-100:]
-            
-            # 保存更新后的对话历史
-            with self._conversation_lock:
-                os.makedirs(os.path.dirname(self._chat_history_file), exist_ok=True)
-                with open(self._chat_history_file, 'w', encoding='utf-8') as f:
-                    json.dump(history, f, ensure_ascii=False, indent=2)
-            
-            return True
-        except Exception as e:
-            logger.error(f"保存对话记录失败: {e}")
-            return False
+
     
     def _clear_content_area(self):
         """
@@ -451,11 +290,112 @@ class DetailsWindow(BaseWindow):
     
     def _load_conversation_history(self):
         """
-        加载对话历史记录（这里简化处理）.
+        加载并显示对话历史记录
         """
-        # 实际应用中，应该从应用的对话存储中获取
-        # 这里只是预留接口
-        pass
+        try:
+            from src.utils.common_utils import get_app_data_dir
+            import os
+            import json
+            
+            # 构建对话记录文件路径
+            chat_history_file = os.path.join(get_app_data_dir(), "config", "chat_history.json")
+            
+            # 检查文件是否存在
+            if not os.path.exists(chat_history_file):
+                self._clear_content_area()
+                no_data_label = QLabel("暂无对话记录")
+                no_data_label.setFont(QFont("PingFang SC", 14))
+                no_data_label.setAlignment(Qt.AlignCenter)
+                no_data_label.setStyleSheet("color: #999999; margin: 50px;")
+                self.content_layout.addWidget(no_data_label)
+                return
+            
+            # 读取对话记录
+            with open(chat_history_file, 'r', encoding='utf-8') as f:
+                chat_history = json.load(f)
+            
+            # 清空内容区域
+            self._clear_content_area()
+            
+            # 创建对话记录展示组
+            chat_group = QGroupBox("对话记录")
+            chat_group.setFont(QFont("PingFang SC", 13, QFont.Bold))
+            chat_layout = QVBoxLayout()
+            
+            # 显示对话记录
+            if not chat_history:
+                no_data_label = QLabel("暂无对话记录")
+                no_data_label.setFont(QFont("PingFang SC", 14))
+                no_data_label.setAlignment(Qt.AlignCenter)
+                no_data_label.setStyleSheet("color: #999999; margin: 50px;")
+                chat_layout.addWidget(no_data_label)
+            else:
+                # 构建对话记录文本
+                for record in chat_history[-20:]:  # 只显示最近20条记录
+                    timestamp = record.get('timestamp', '')
+                    user_msg = record.get('user', '')
+                    ai_msg = record.get('ai', '')
+                    
+                    # 创建消息容器
+                    msg_frame = QFrame()
+                    msg_frame.setFrameStyle(QFrame.StyledPanel)
+                    msg_layout = QVBoxLayout(msg_frame)
+                    
+                    # 格式化时间显示
+                    if timestamp:
+                        time_label = QLabel(f"[{timestamp}]");
+                        time_label.setStyleSheet("font-weight: bold; color: #666666;")
+                        msg_layout.addWidget(time_label)
+                    
+                    # 添加用户消息
+                    if user_msg:
+                        user_label = QLabel(f"用户: {user_msg}")
+                        user_label.setWordWrap(True)
+                        user_label.setStyleSheet("margin-left: 10px;")
+                        msg_layout.addWidget(user_label)
+                    
+                    # 添加AI回复
+                    if ai_msg:
+                        ai_label = QLabel(f"小智: {ai_msg}")
+                        ai_label.setWordWrap(True)
+                        ai_label.setStyleSheet("margin-left: 10px; color: #3366cc;")
+                        msg_layout.addWidget(ai_label)
+                    
+                    # 添加分隔线
+                    separator = QFrame()
+                    separator.setFrameShape(QFrame.HLine)
+                    separator.setFrameShadow(QFrame.Sunken)
+                    msg_layout.addWidget(separator)
+                    
+                    chat_layout.addWidget(msg_frame)
+                
+                # 添加弹簧以将内容推到顶部
+                chat_layout.addStretch()
+            
+            chat_group.setLayout(chat_layout)
+            self.content_layout.addWidget(chat_group)
+            
+        except FileNotFoundError:
+            self._clear_content_area()
+            no_data_label = QLabel("暂无对话记录")
+            no_data_label.setFont(QFont("PingFang SC", 14))
+            no_data_label.setAlignment(Qt.AlignCenter)
+            no_data_label.setStyleSheet("color: #999999; margin: 50px;")
+            self.content_layout.addWidget(no_data_label)
+        except json.JSONDecodeError:
+            self._clear_content_area()
+            error_label = QLabel("对话记录文件格式错误")
+            error_label.setFont(QFont("PingFang SC", 14))
+            error_label.setAlignment(Qt.AlignCenter)
+            error_label.setStyleSheet("color: #999999; margin: 50px;")
+            self.content_layout.addWidget(error_label)
+        except Exception as e:
+            self._clear_content_area()
+            error_label = QLabel(f"加载对话记录时出错: {str(e)}")
+            error_label.setFont(QFont("PingFang SC", 14))
+            error_label.setAlignment(Qt.AlignCenter)
+            error_label.setStyleSheet("color: #999999; margin: 50px;")
+            self.content_layout.addWidget(error_label)
     
     def _delayed_initialization(self):
         """
@@ -522,6 +462,12 @@ class DetailsWindow(BaseWindow):
         except Exception as e:
             logger.error(f"添加学习报告失败: {e}")
     
+    def load_conversation_history(self):
+        """
+        公共方法：加载并显示对话历史记录
+        """
+        self._load_conversation_history()
+
     def closeEvent(self, event):
         """
         处理窗口关闭事件.

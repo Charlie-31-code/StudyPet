@@ -28,6 +28,7 @@ class GuiDisplayModel(QObject):
     sendButtonClicked = pyqtSignal(str)  # 携带输入的文本
     settingsButtonClicked = pyqtSignal()
     detailsButtonClicked = pyqtSignal()
+    studyRecordButtonClicked = pyqtSignal()  # 新增学习记录按钮点击信号
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -155,7 +156,7 @@ class GuiDisplayModel(QObject):
     studyProgressChanged = pyqtSignal()
     petStateChanged = pyqtSignal()
     studySessionActiveChanged = pyqtSignal()
-    # 小人脸图像（data URL）
+    # 小脸图像（data URL）
     faceImageChanged = pyqtSignal()
     # 可配置的番茄计时属性
     studyMinutesChanged = pyqtSignal()
