@@ -2,6 +2,7 @@
 通用工具函数集合模块 包含文本转语音、浏览器操作、剪贴板等通用工具函数.
 """
 
+import os
 import queue
 import shutil
 import threading
@@ -12,6 +13,23 @@ from typing import Optional
 from src.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
+
+
+def get_app_data_dir() -> str:
+    """
+    获取应用数据目录，用于存储配置文件、日志等数据。
+    
+    Returns:
+        str: 应用数据目录的绝对路径
+    """
+    try:
+        # 获取应用根目录（main.py所在目录）
+        app_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        return app_root
+    except Exception as e:
+        logger.error(f"获取应用数据目录失败: {e}")
+        # 返回当前工作目录作为备用
+        return os.getcwd()
 
 # 全局音频播放队列和锁
 _audio_queue = queue.Queue()

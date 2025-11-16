@@ -367,6 +367,7 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
             "modeButtonClicked": self._on_mode_button_click,
             "sendButtonClicked": self._on_send_button_click,
             "settingsButtonClicked": self._on_settings_button_click,
+            "detailsButtonClicked": self._on_details_button_click,
             "studyModeClicked": self._on_study_mode_click,
             "studyStartClicked": self._on_study_start_click,
             "studyStartAlreadyClicked": self._on_study_start_already_click,
@@ -394,6 +395,25 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
     # =========================================================================
     # 按钮事件处理
     # =========================================================================
+
+    def _on_details_button_click(self):
+        """
+        详情按钮点击事件处理.
+        """
+        try:
+            from src.views.details.details_window import DetailsWindow
+            
+            # 检查详情窗口是否已存在，避免重复创建
+            if not hasattr(self, '_details_window') or self._details_window is None:
+                self._details_window = DetailsWindow(parent=self.root)
+            
+            # 显示详情窗口
+            self._details_window.show()
+            self._details_window.raise_()
+            self._details_window.activateWindow()
+            
+        except Exception as e:
+            self.logger.error(f"打开详情窗口失败: {e}", exc_info=True)
 
     def _on_manual_button_press(self):
         """

@@ -32,6 +32,8 @@ class UIPlugin(Plugin):
         self._notification_cooldown = 60
         # 会话内连贯的分心计数（用于每累计 3 次分心后提醒）
         self._distracted_local_count = 0
+        # 详情窗口引用，用于对话记录保存
+        self.details_window = None
 
     async def setup(self, app: Any) -> None:
         """
@@ -73,6 +75,22 @@ class UIPlugin(Plugin):
 
         # 启动显示
         self.app.spawn(self.display.start(), name=f"ui:{self.mode}:start")
+        
+        # 如果是GUI模式，设置一个定时器来定期检查详情窗口是否已创建
+        if self._is_gui:
+            from PyQt5.QtCore import QTimer
+            def check_details_window():
+                try:
+                    if hasattr(self.display, '_details_window') and self.display._details_window:
+                        self.details_window = self.display._details_window
+                        # 窗口已找到，可以停止定时器
+                        timer.stop()
+                except Exception:
+                    pass
+            
+            timer = QTimer()
+            timer.timeout.connect(check_details_window)
+            timer.start(1000)  # 每秒检查一次，直到找到详情窗口
 
     async def _setup_callbacks(self) -> None:
         """
@@ -151,6 +169,8 @@ class UIPlugin(Plugin):
                             if fm_local:
                                 try:
                                     report = fm_local.end_session()
+                                    # 停止监控以释放资源
+                                    fm_local.stop()
                                 except Exception:
                                     report = None
 
@@ -160,13 +180,53 @@ class UIPlugin(Plugin):
                                 reports_dir = cfg.config_dir / 'study_reports'
                                 reports_dir.mkdir(parents=True, exist_ok=True)
                                 ts = int(time.time())
+                                session_id = f"session_{ts}"
                                 fname = reports_dir / f"report_{ts}.json"
                                 data = {
                                     'phase': phase_name,
                                     'timestamp': ts,
                                     'report': report,
+                                    'session_id': session_id
                                 }
                                 fname.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
+                                
+                                # 同时更新历史报告索引文件，记录所有报告
+                                history_file = reports_dir / "report_history.json"
+                                all_reports = []
+                                
+                                # 读取现有历史
+                                if history_file.exists():
+                                    try:
+                                        all_reports = json.loads(history_file.read_text(encoding='utf-8'))
+                                    except Exception:
+                                        all_reports = []
+                                
+                                # 添加新报告信息
+                                all_reports.append({
+                                    "timestamp": data["timestamp"],
+                                    "file_name": fname.name,  # 使用file_name键名以匹配details_window.py中的期望
+                                    "duration": report.get("duration", 0) if report else 0,
+                                    "focus_time": report.get("focused_time", 0) if report else 0,
+                                    "session_id": data["session_id"],
+                                    "phase": phase_name
+                                })
+                                
+                                # 按时间戳倒序排列，方便查看最新报告
+                                all_reports.sort(key=lambda x: x["timestamp"], reverse=True)
+                                
+                                # 保存历史索引
+                                history_file.write_text(json.dumps(all_reports, ensure_ascii=False, indent=2), encoding='utf-8')
+                                
+                                # 如果有详情窗口，更新数据
+                                if hasattr(self, 'details_window') and self.details_window:
+                                    try:
+                                        if hasattr(self.details_window, 'add_study_report'):
+                                            self.details_window.add_study_report(data)
+                                        # 通知详情窗口刷新报告列表
+                                        if hasattr(self.details_window, 'refresh_report_list'):
+                                            self.details_window.refresh_report_list()
+                                    except Exception:
+                                        pass
                             except Exception:
                                 pass
 
@@ -346,6 +406,9 @@ class UIPlugin(Plugin):
                 fm = getattr(self.app, "face_monitor", None)
                 if fm:
                     try:
+                        # 开始新的监控会话并启动监控
+                        fm.start_session()
+                        fm.start()
                         def _on_face_status(status: str, score: int):
                             # 记录调试日志到 logs/face_monitor_events.log，便于排查未触发提醒的问题
                             try:
@@ -574,10 +637,61 @@ class UIPlugin(Plugin):
             fm = getattr(self.app, "face_monitor", None)
             if fm:
                 try:
-                    # 结束会话并保存简短报告
+                    # 结束会话并保存完整报告
                     try:
                         report = fm.end_session()
-                        # 可在此处保存或上传报告（已在 cycle_complete 里处理主要保存）
+                        # 保存报告到配置目录，与_on_cycle_complete保持一致
+                        from src.utils.config_manager import ConfigManager
+                        import json, time
+                        cfg = ConfigManager.get_instance()
+                        reports_dir = cfg.config_dir / 'study_reports'
+                        reports_dir.mkdir(parents=True, exist_ok=True)
+                        ts = int(time.time())
+                        session_id = f"session_{ts}"
+                        fname = reports_dir / f"report_{ts}.json"
+                        data = {
+                            'phase': "manual_stop",
+                            'timestamp': ts,
+                            'report': report,
+                            'session_id': session_id
+                        }
+                        fname.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
+                        
+                        # 更新历史报告索引文件
+                        history_file = reports_dir / "report_history.json"
+                        all_reports = []
+                        if history_file.exists():
+                            try:
+                                all_reports = json.loads(history_file.read_text(encoding='utf-8'))
+                            except Exception:
+                                all_reports = []
+                        
+                        # 添加新报告信息
+                        all_reports.append({
+                            "timestamp": data["timestamp"],
+                            "file_name": fname.name,  # 使用file_name键名以匹配details_window.py中的期望
+                            "duration": report.get("duration", 0) if report else 0,
+                            "focus_time": report.get("focused_time", 0) if report else 0,
+                            "session_id": data["session_id"],
+                            "phase": "manual_stop"
+                        })
+                        
+                        # 按时间戳倒序排列
+                        all_reports.sort(key=lambda x: x["timestamp"], reverse=True)
+                        
+                        # 保存历史索引
+                        history_file.write_text(json.dumps(all_reports, ensure_ascii=False, indent=2), encoding='utf-8')
+                        
+                        # 通知详情窗口更新数据
+                        if hasattr(self, 'details_window') and self.details_window:
+                            try:
+                                if hasattr(self.details_window, 'add_study_report'):
+                                    self.details_window.add_study_report(data)
+                                # 通知详情窗口刷新报告列表
+                                if hasattr(self.details_window, 'refresh_report_list'):
+                                    self.details_window.refresh_report_list()
+                            except Exception:
+                                pass
                     except Exception:
                         pass
                     fm.stop()

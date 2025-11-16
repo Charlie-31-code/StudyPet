@@ -27,6 +27,7 @@ class GuiDisplayModel(QObject):
     modeButtonClicked = pyqtSignal()
     sendButtonClicked = pyqtSignal(str)  # 携带输入的文本
     settingsButtonClicked = pyqtSignal()
+    detailsButtonClicked = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -370,4 +371,3 @@ class GuiDisplayModel(QObject):
         if getattr(self, "_cycles_before_long", None) != v:
             self._cycles_before_long = v
             self.cyclesBeforeLongChanged.emit()
-

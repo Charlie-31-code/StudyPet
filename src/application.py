@@ -5,6 +5,7 @@
 import asyncio
 import sys
 import threading
+import time
 from pathlib import Path
 from typing import Any, Awaitable
 
@@ -368,10 +369,85 @@ class Application:
                             self.set_device_state(DeviceState.IDLE),
                             "state:tts_stop_idle",
                         )
+            # 处理对话保存
+            if msg_type == "tts" and "text" in json_data:
+                # 保存AI回复并尝试配对用户消息
+                self._save_conversation(json_data["text"], is_user=False)
+            elif msg_type == "stt" and "text" in json_data:
+                # 保存用户消息
+                self._save_conversation(json_data["text"], is_user=True)
             # 转发给插件
             self.spawn(self.plugins.notify_incoming_json(json_data), "plugin:on_json")
         except Exception:
             logger.info("收到JSON消息")
+            
+    def _save_conversation(self, message: str, is_user: bool):
+        """
+        保存对话记录到对话历史中。
+        
+        Args:
+            message: 对话消息内容
+            is_user: 是否是用户的消息
+        """
+        try:
+            # 确保消息不为空
+            if not message.strip():
+                return
+                
+            # 管理对话缓冲区
+            if not hasattr(self, '_conversation_buffer'):
+                self._conversation_buffer = {}
+                
+            if is_user:
+                # 保存用户消息
+                self._conversation_buffer['user'] = message
+            else:
+                # 保存AI回复并尝试配对用户消息
+                if 'user' in self._conversation_buffer:
+                    # 如果用户消息存在，保存完整对话
+                    user_message = self._conversation_buffer.pop('user')
+                    timestamp = time.time()
+                    
+                    # 直接保存到文件，确保可靠性
+                    try:
+                        from src.utils.common_utils import get_app_data_dir
+                        import json
+                        import os
+                        
+                        # 确保目录存在
+                        chat_history_file = os.path.join(get_app_data_dir(), "config", "chat_history.json")
+                        os.makedirs(os.path.dirname(chat_history_file), exist_ok=True)
+                        
+                        # 读取现有对话
+                        conversations = []
+                        if os.path.exists(chat_history_file):
+                            try:
+                                with open(chat_history_file, 'r', encoding='utf-8') as f:
+                                    conversations = json.load(f)
+                            except Exception:
+                                conversations = []
+                        
+                        # 添加新对话（使用与DetailsWindow相同的格式）
+                        conversations.append({
+                            'timestamp': timestamp,
+                            'user': user_message,
+                            'ai': message
+                        })
+                        
+                        # 限制历史记录数量（最多保存1000条）
+                        if len(conversations) > 1000:
+                            conversations = conversations[-1000:]
+                        
+                        # 保存到文件
+                        with open(chat_history_file, 'w', encoding='utf-8') as f:
+                            json.dump(conversations, f, ensure_ascii=False, indent=2)
+                            
+                        logger.debug(f"对话已保存到文件: {user_message[:20]}...")
+                        
+                    except Exception as e:
+                        logger.error(f"保存对话到文件时出错: {e}")
+        except Exception as e:
+            logger.error(f"保存对话记录时出错: {e}", exc_info=True)
 
     async def _on_audio_channel_opened(self):
         logger.info("协议通道已打开")

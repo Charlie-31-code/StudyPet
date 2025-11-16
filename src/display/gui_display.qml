@@ -17,6 +17,7 @@ Rectangle {
     signal modeButtonClicked()
     signal sendButtonClicked(string text)
     signal settingsButtonClicked()
+    signal detailsButtonClicked()
     signal studyModeClicked()
     signal studyStartClicked()
     signal studyStartAlreadyClicked()
@@ -67,6 +68,21 @@ Rectangle {
                 anchors.rightMargin: 8
                 spacing: 8
                 z: 1  // 按钮层在拖动层上方
+
+                // 详情按钮
+                Rectangle {
+                    id: btnDetails
+                    width: 24; height: 24; radius: 6
+                    color: btnDetailsMouse.pressed ? "#e5e6eb" : (btnDetailsMouse.containsMouse ? "#f2f3f5" : "transparent")
+                    z: 2  // 确保按钮在最上层
+                    Text { anchors.centerIn: parent; text: "详情"; font.pixelSize: 10; color: "#4e5969" }
+                    MouseArea {
+                        id: btnDetailsMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        onClicked: root.detailsButtonClicked()
+                    }
+                }
 
                 // 左侧拖动区域
                 Item { id: dragArea; Layout.fillWidth: true; Layout.fillHeight: true }
