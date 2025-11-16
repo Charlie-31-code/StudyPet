@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-详情窗口 - 用于展示学习模式专注度详情.
+详情窗口 - 用于展示学习模式专注度详情和对话记录.
 """
 
 import os
@@ -16,6 +16,11 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QDateTime
 from PyQt5.QtGui import QFont
+
+# 导入matplotlib相关库
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+import matplotlib.font_manager as fm
 
 from src.views.base.base_window import BaseWindow
 from src.utils.common_utils import get_app_data_dir
@@ -129,18 +134,18 @@ class DetailsWindow(BaseWindow):
         # 读取最新的学习报告
         report_data = self._get_latest_study_report()
         
-        # 创建专注度数据展示组
-        focus_group = QGroupBox("专注度数据详情")
-        focus_group.setFont(QFont("PingFang SC", 13, QFont.Bold))
-        
-        grid_layout = QGridLayout()
-        grid_layout.setSpacing(15)
-        
         # 处理学习报告数据
         if report_data and 'report' in report_data:
             # 从学习报告中提取真实数据
             report = report_data['report']
             if report:
+                # 创建专注度数据展示组
+                focus_group = QGroupBox("专注度数据详情")
+                focus_group.setFont(QFont("PingFang SC", 13, QFont.Bold))
+                
+                grid_layout = QGridLayout()
+                grid_layout.setSpacing(15)
+                
                 # 显示各项真实数据
                 data_items = [
                     ("专注次数", report.get("focused_count", 0)),
@@ -171,6 +176,12 @@ class DetailsWindow(BaseWindow):
                     grid_layout.addWidget(label, i, 0)
                     grid_layout.addWidget(value_label, i, 1)
                 
+                focus_group.setLayout(grid_layout)
+                self.content_layout.addWidget(focus_group)
+                
+                # 添加可视化图表
+                self._add_visualization_charts(report)
+                
                 # 添加鼓励话语
                 encouragement_group = QGroupBox("鼓励话语")
                 encouragement_group.setFont(QFont("PingFang SC", 13, QFont.Bold))
@@ -193,8 +204,6 @@ class DetailsWindow(BaseWindow):
                 time_label.setStyleSheet("color: #999999; margin-top: 10px;")
                 
                 # 添加到布局
-                focus_group.setLayout(grid_layout)
-                self.content_layout.addWidget(focus_group)
                 self.content_layout.addWidget(encouragement_group)
                 self.content_layout.addWidget(time_label)
                 
@@ -474,3 +483,72 @@ class DetailsWindow(BaseWindow):
         """
         self.window_closed.emit()
         event.accept()
+
+    def _add_visualization_charts(self, report):
+        """
+        添加可视化图表展示专注度数据.
+        
+        Args:
+            report: 学习报告数据
+        """
+        # 创建图表组
+        charts_group = QGroupBox("专注度数据可视化")
+        charts_group.setFont(QFont("PingFang SC", 13, QFont.Bold))
+        charts_layout = QVBoxLayout()
+        
+        # 创建matplotlib图表
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
+        fig.tight_layout(pad=3.0)
+        
+        # 设置中文字体
+        plt.rcParams['font.sans-serif'] = ['SimHei', 'PingFang SC', 'Arial Unicode MS']
+        plt.rcParams['axes.unicode_minus'] = False
+        
+        # 数据准备
+        focused_count = report.get("focused_count", 0)
+        distracted_count = report.get("distracted_count", 0)
+        absent_count = report.get("absent_count", 0)
+        blocked_count = report.get("blocked_count", 0)
+        
+        # 创建柱状图
+        categories = ['专注', '分心', '离开', '遮挡']
+        values = [focused_count, distracted_count, absent_count, blocked_count]
+        colors = ['#4CAF50', '#FF9800', '#F44336', '#9C27B0']
+        
+        bars = ax1.bar(categories, values, color=colors)
+        ax1.set_title('专注度状态分布', fontsize=12, pad=10)
+        ax1.set_ylabel('次数', fontsize=10)
+        
+        # 在柱状图上添加数值标签
+        for bar, value in zip(bars, values):
+            height = bar.get_height()
+            ax1.text(bar.get_x() + bar.get_width()/2., height,
+                    f'{value}',
+                    ha='center', va='bottom', fontsize=9)
+        
+        # 创建饼图
+        non_zero_values = [v for v in values if v > 0]
+        non_zero_categories = [cat for cat, val in zip(categories, values) if val > 0]
+        non_zero_colors = [col for col, val in zip(colors, values) if val > 0]
+        
+        if non_zero_values:
+            wedges, texts, autotexts = ax2.pie(non_zero_values, labels=non_zero_categories, 
+                                               colors=non_zero_colors, autopct='%1.1f%%',
+                                               startangle=90)
+            ax2.set_title('专注度状态占比', fontsize=12, pad=10)
+            
+            # 设置饼图标签字体大小
+            for text in texts:
+                text.set_fontsize(9)
+            for autotext in autotexts:
+                autotext.set_fontsize(9)
+        
+        # 将图表嵌入到QWidget中
+        canvas = FigureCanvas(fig)
+        charts_layout.addWidget(canvas)
+        
+        charts_group.setLayout(charts_layout)
+        self.content_layout.addWidget(charts_group)
+        
+        # 调整图表布局
+        fig.subplots_adjust(left=0.1, right=0.9, top=0.85, bottom=0.15)
