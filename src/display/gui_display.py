@@ -242,8 +242,10 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
         """
         更新表情显示.
         """
-        # 总是尝试更新表情，即使与上次相同
-        self.logger.debug(f"正在更新表情为: {emotion_name}")
+        # 不再检查是否与上一个表情相同，确保每次都会更新，支持学习模式中的动图表情
+        # if emotion_name == self._last_emotion_name:
+        #     return
+
         self._last_emotion_name = emotion_name
         asset_path = self._get_emotion_asset_path(emotion_name)
 
@@ -264,6 +266,7 @@ class GuiDisplay(BaseDisplay, QObject, metaclass=CombinedMeta):
 
         url_or_text = to_qml_url(asset_path)
         self.display_model.update_emotion(url_or_text)
+        self.logger.debug(f"更新表情为: {emotion_name}, 路径: {url_or_text}")
 
     async def update_button_status(self, text: str):
         """

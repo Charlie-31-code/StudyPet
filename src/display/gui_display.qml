@@ -724,7 +724,40 @@ Rectangle {
                         asynchronous: true
                         smooth: true
                         mipmap: true
+                        // 添加动图支持
+                        property bool isAnimated: source.toString().toLowerCase().endsWith(".gif")
                     }
+                    
+                    // 添加AnimatedImage支持动图
+                    AnimatedImage {
+                        id: studyPetAnimatedImg
+                        width: parent.width * 1.2
+                        height: parent.height * 1.2
+                        anchors.centerIn: parent
+                        source: displayModel ? displayModel.emotionPath : ""
+                        fillMode: Image.PreserveAspectFit
+                        cache: false
+                        asynchronous: true
+                        smooth: true
+                        playing: true
+                        visible: studyPetImg.isAnimated
+                    }
+                    
+                    // 根据是否为动图切换显示
+                    state: studyPetImg.isAnimated ? "animated" : "static"
+                    
+                    states: [
+                        State {
+                            name: "animated"
+                            PropertyChanges { target: studyPetImg; visible: false }
+                            PropertyChanges { target: studyPetAnimatedImg; visible: true }
+                        },
+                        State {
+                            name: "static"
+                            PropertyChanges { target: studyPetImg; visible: true }
+                            PropertyChanges { target: studyPetAnimatedImg; visible: false }
+                        }
+                    ]
                 }
 
                 // 右侧：人脸检测区域

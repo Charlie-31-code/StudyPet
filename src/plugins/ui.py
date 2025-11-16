@@ -154,9 +154,9 @@ class UIPlugin(Plugin):
                     # 番茄完成回调 -> 播放庆祝、生成学习报告与记录（UI 可显示动画）
                     def _on_cycle_complete(phase_name: str):
                         try:
-                            # 显示完成动画/表情
+                            # 显示完成动画/表情 - 使用Achievement Unlocked动图
                             self.app.schedule_command_nowait(
-                                lambda: self.display.update_emotion("happy")
+                                lambda: self.display.update_emotion("Achievement Unlocked")
                             )
                             # 语音庆祝与生成报告
                             from src.utils.common_utils import play_audio_nonblocking
@@ -398,6 +398,8 @@ class UIPlugin(Plugin):
                     self.display.display_model.studyTimerText = f"{study_minutes:02d}:00"
                     # 重置进度条
                     self.display.display_model.studyProgress = 0
+                    # 显示学习开始的表情
+                    self.display.update_emotion("Super Focused")
                 except Exception:
                     pass
                 # 启动人脸监控（如果存在）并绑定回调
@@ -427,9 +429,19 @@ class UIPlugin(Plugin):
                                         pass
                                     # 根据状态修改表情
                                     if status == "focused":
-                                        self.display.update_emotion("focus")
+                                        # 专心状态，随机选择confident或acrobatics
+                                        import random
+                                        emotion = random.choice(["confident", "acrobatics"])
+                                        self.display.update_emotion(emotion)
                                     elif status == "distracted":
-                                        self.display.update_emotion("sad")
+                                        # 分心状态
+                                        self.display.update_emotion("Extremely Distracted")
+                                    elif status == "absent":
+                                        # 缺席状态
+                                        self.display.update_emotion("Hurry up and study")
+                                    elif status == "blocked":
+                                        # 遮挡状态
+                                        self.display.update_emotion("angry")
                                     else:
                                         self.display.update_emotion("neutral")
                                 except Exception:
