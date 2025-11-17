@@ -502,7 +502,6 @@ class UIPlugin(Plugin):
                                             # 添加学习模式下的语音播报（降低频率）
                                             try:
                                                 status_messages = {
-                                                    "focused": "太棒了，你很专注哦！",
                                                     "distracted": "注意注意力，回到学习中来！",
                                                     "absent": "咦，你去哪了？快回来学习吧！",
                                                     "blocked": "不要遮挡摄像头，让我看到你！"
@@ -517,7 +516,6 @@ class UIPlugin(Plugin):
                                                     
                                                     # 定义播报间隔（秒）
                                                     voice_intervals = {
-                                                        "focused": 30,  # 专注状态每30秒播报一次
                                                         "distracted": 60,  # 分心状态每60秒播报一次
                                                         "absent": 60,  # 离开状态每60秒播报一次
                                                         "blocked": 60   # 遮挡状态每60秒播报一次
