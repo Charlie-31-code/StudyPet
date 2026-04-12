@@ -240,4 +240,4 @@ dependencies:
       - websockets==16.0
       - winregistry==2.1.5
       - yarl==1.23.0
-prefix: D:\anaconda3\envs\studypet_env
+
