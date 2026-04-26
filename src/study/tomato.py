@@ -39,12 +39,25 @@ class TomatoTimer:
                  focus_duration: int = 25 * 60,
                  short_break_duration: int = 5 * 60,
                  long_break_duration: int = 15 * 60,
-                 cycles_before_long: int = 4):
+                 cycles_before_long: int = 4,
+                 total_focus_sessions: int = 2):
+        """
+        初始化番茄钟计时器
+        
+        Args:
+            app: 应用程序实例
+            focus_duration: 专注时长（秒），默认25分钟
+            short_break_duration: 短休息时长（秒），默认5分钟
+            long_break_duration: 长休息时长（秒），默认15分钟
+            cycles_before_long: 多少个番茄钟后长休息，默认4
+            total_focus_sessions: 一个学习周期内的专注次数，默认2次（即学习+休息+学习+休息）
+        """
         self.app = app
         self.focus_duration = focus_duration
         self.short_break_duration = short_break_duration
         self.long_break_duration = long_break_duration
         self.cycles_before_long = cycles_before_long
+        self.total_focus_sessions = total_focus_sessions
 
         # 番茄钟状态
         self.state = PomodoroState.STOPPED
@@ -335,8 +348,13 @@ class TomatoTimer:
                 except Exception as e:
                     logger.error(f"Error in on_cycle_complete callback: {e}")
 
-            # 开始下一个专注阶段
-            await self._start_focus()
+            # 检查是否达到了设定的专注次数，如果是则停止整个周期
+            if self.completed_pomodoros >= self.total_focus_sessions:
+                logger.info(f"已完成{self.total_focus_sessions}个番茄钟，学习周期结束，自动停止")
+                await self.stop()
+            else:
+                # 开始下一个专注阶段
+                await self._start_focus()
 
     def _update_ui(self):
         """更新UI显示"""
