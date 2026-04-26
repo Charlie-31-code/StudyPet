@@ -336,6 +336,21 @@ class GuiDisplayModel(QObject):
         if getattr(self, "_preset", "") != value:
             self._preset = str(value)
             self.presetChanged.emit()
+            
+            # 根据预设值更新学习和休息时间
+            if value == "deep":
+                self.studyMinutes = 50
+                self.breakMinutes = 10
+            elif value == "short":
+                self.studyMinutes = 15
+                self.breakMinutes = 5
+            else:  # default
+                self.studyMinutes = 25
+                self.breakMinutes = 5
+            
+            # 如果学习模式已激活但会话未开始，更新倒计时显示
+            if self._study_mode_active and not self._study_session_active:
+                self._update_study_timer_text()
 
     @pyqtProperty(int, notify=longBreakMinutesChanged)
     def longBreakMinutes(self):
