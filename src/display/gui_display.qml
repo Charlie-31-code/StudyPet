@@ -431,266 +431,466 @@ Rectangle {
             }
 
             // 第二行：时间调整区域
-            RowLayout {
+            GridLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 60
-                spacing: 15
+                Layout.preferredHeight: 120
+                columns: 5
+                rowSpacing: 10
+                columnSpacing: 10
                 Layout.alignment: Qt.AlignHCenter
-                
-                // 预设下拉
-                ComboBox {
-                    id: presetCombo
-                    model: ["default", "deep", "short"]
-                    currentIndex: displayModel ? (displayModel.preset === "deep" ? 1 : (displayModel.preset === "short" ? 2 : 0)) : 0
-                    onCurrentTextChanged: {
-                        if (displayModel) {
-                            displayModel.preset = currentText
-                            if (currentText === "deep") {
-                                displayModel.studyMinutes = 50
-                                displayModel.breakMinutes = 10
-                                displayModel.longBreakMinutes = 20
-                            } else if (currentText === "short") {
-                                displayModel.studyMinutes = 15
-                                displayModel.breakMinutes = 5
-                                displayModel.longBreakMinutes = 15
-                            } else {
-                                // default: load from model's current or config
-                                // keep existing values
+
+                // 预设下拉 - 浅灰色边框
+                Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    
+                    Rectangle {
+                        anchors.centerIn: parent
+                        anchors.verticalCenterOffset: 10
+                        width: parent.width * 0.9
+                        height: parent.height * 0.8
+                        radius: 8
+                        border.color: "#ccc"
+                        border.width: 2
+                        color: "#f5f5f5"
+
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: 6
+
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: "预设模式"
+                                font.pixelSize: 24  // 字体大小从18改为24
+                                color: "#555"
+                            }
+
+                            ComboBox {
+                                id: presetCombo
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                width: 150  // 将原来的90改为150
+                                height: 30
+                                font.pixelSize: 16
+                                model: ["default", "deep", "short"]
+                                currentIndex: displayModel ? (displayModel.preset === "deep" ? 1 : (displayModel.preset === "short" ? 2 : 0)) : 0
+                                onCurrentTextChanged: {
+                                    if (displayModel) {
+                                        displayModel.preset = currentText
+                                        if (currentText === "deep") {
+                                            displayModel.studyMinutes = 50
+                                            displayModel.breakMinutes = 10
+                                            displayModel.longBreakMinutes = 20
+                                        } else if (currentText === "short") {
+                                            displayModel.studyMinutes = 15
+                                            displayModel.breakMinutes = 5
+                                            displayModel.longBreakMinutes = 15
+                                        } else {
+                                            // default: load from model's current or config
+                                            // keep existing values
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 }
 
-                // 学习分钟输入
-                Button {
-                    Layout.preferredWidth: 30
-                    Layout.preferredHeight: 30
-                    text: "-"
-                    background: Rectangle { color: "#165dff"; radius: 4 }
-                    contentItem: Text { text: "-"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                // 学习分钟输入 - 蓝色边框
+                Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
                     
-                    // 长按快速减少时间的Timer
-                    Timer {
-                        id: studyMinutesTimer
-                        interval: 100
-                        repeat: true
-                        onTriggered: {
-                            if (displayModel && displayModel.studyMinutes > 1) {
-                                displayModel.studyMinutes -= 1
-                            } else {
-                                studyMinutesTimer.stop()
-                            }
-                        }
-                    }
-                    
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            if (displayModel && displayModel.studyMinutes > 1) {
-                                displayModel.studyMinutes -= 1
-                            }
-                        }
-                        onPressAndHold: {
-                            studyMinutesTimer.start()
-                        }
-                        onReleased: {
-                            studyMinutesTimer.stop()
-                        }
-                    }
-                }
-                
-                Text {
-                    text: displayModel ? displayModel.studyMinutes : 25
-                    font.pixelSize: 20
-                    verticalAlignment: Text.AlignVCenter
-                }
-                
-                Button {
-                    Layout.preferredWidth: 30
-                    Layout.preferredHeight: 30
-                    text: "+"
-                    background: Rectangle { color: "#165dff"; radius: 4 }
-                    contentItem: Text { text: "+"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                    onClicked: {
-                        if (displayModel && displayModel.studyMinutes < 180) {
-                            displayModel.studyMinutes += 1
-                        }
-                    }
-                }
-                
-                Text { text: "分"; verticalAlignment: Text.AlignVCenter }
+                    Rectangle {
+                        anchors.centerIn: parent
+                        anchors.verticalCenterOffset: 10
+                        width: parent.width * 0.9
+                        height: parent.height * 0.8
+                        radius: 8
+                        border.color: "#165dff"
+                        border.width: 2
+                        color: "#f0f8ff"
 
-                // 休息分钟输入
-                Button {
-                    Layout.preferredWidth: 30
-                    Layout.preferredHeight: 30
-                    text: "-"
-                    background: Rectangle { color: "#165dff"; radius: 4 }
-                    contentItem: Text { text: "-"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                    
-                    // 长按快速减少时间的Timer
-                    Timer {
-                        id: breakMinutesTimer
-                        interval: 100
-                        repeat: true
-                        onTriggered: {
-                            if (displayModel && displayModel.breakMinutes > 5) {
-                                displayModel.breakMinutes -= 1
-                            } else {
-                                breakMinutesTimer.stop()
-                            }
-                        }
-                    }
-                    
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            if (displayModel && displayModel.breakMinutes > 5) {
-                                displayModel.breakMinutes -= 1
-                            }
-                        }
-                        onPressAndHold: {
-                            breakMinutesTimer.start()
-                        }
-                        onReleased: {
-                            breakMinutesTimer.stop()
-                        }
-                    }
-                }
-                
-                Text {
-                    text: displayModel ? displayModel.breakMinutes : 5
-                    font.pixelSize: 20
-                    verticalAlignment: Text.AlignVCenter
-                }
-                
-                Button {
-                    Layout.preferredWidth: 30
-                    Layout.preferredHeight: 30
-                    text: "+"
-                    background: Rectangle { color: "#165dff"; radius: 4 }
-                    contentItem: Text { text: "+"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                    onClicked: {
-                        if (displayModel && displayModel.breakMinutes < 36) {
-                            displayModel.breakMinutes += 1
-                        }
-                    }
-                }
-                
-                Text { text: "休息分"; verticalAlignment: Text.AlignVCenter }
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: 6
 
-                // 长休息分钟
-                Button {
-                    Layout.preferredWidth: 30
-                    Layout.preferredHeight: 30
-                    text: "-"
-                    background: Rectangle { color: "#165dff"; radius: 4 }
-                    contentItem: Text { text: "-"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                    
-                    // 长按快速减少时间的Timer
-                    Timer {
-                        id: longBreakMinutesTimer
-                        interval: 100
-                        repeat: true
-                        onTriggered: {
-                            if (displayModel && displayModel.longBreakMinutes > 15) {
-                                displayModel.longBreakMinutes -= 1
-                            } else {
-                                longBreakMinutesTimer.stop()
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: "专注时长"
+                                font.pixelSize: 24  // 字体大小从18改为24
+                                color: "#165dff"
                             }
-                        }
-                    }
-                    
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            if (displayModel && displayModel.longBreakMinutes > 15) {
-                                displayModel.longBreakMinutes -= 1
-                            }
-                        }
-                        onPressAndHold: {
-                            longBreakMinutesTimer.start()
-                        }
-                        onReleased: {
-                            longBreakMinutesTimer.stop()
-                        }
-                    }
-                }
-                
-                Text {
-                    text: displayModel ? displayModel.longBreakMinutes : 15
-                    font.pixelSize: 20
-                    verticalAlignment: Text.AlignVCenter
-                }
-                
-                Button {
-                    Layout.preferredWidth: 30
-                    Layout.preferredHeight: 30
-                    text: "+"
-                    background: Rectangle { color: "#165dff"; radius: 4 }
-                    contentItem: Text { text: "+"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                    onClicked: {
-                        if (displayModel && displayModel.longBreakMinutes < 30) {
-                            displayModel.longBreakMinutes += 1
-                        }
-                    }
-                }
-                
-                Text { text: "长休息分"; verticalAlignment: Text.AlignVCenter }
 
-                // cycles
-                Button {
-                    Layout.preferredWidth: 30
-                    Layout.preferredHeight: 30
-                    text: "-"
-                    background: Rectangle { color: "#165dff"; radius: 4 }
-                    contentItem: Text { text: "-"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                    
-                    // 长按快速减少时间的Timer
-                    Timer {
-                        id: cyclesTimer
-                        interval: 100
-                        repeat: true
-                        onTriggered: {
-                            if (displayModel && displayModel.cyclesBeforeLong > 1) {
-                                displayModel.cyclesBeforeLong -= 1
-                            } else {
-                                cyclesTimer.stop()
+                            Row {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                spacing: 45
+
+                                Button {
+                                    Layout.preferredWidth: 40
+                                    Layout.preferredHeight: 40
+                                    padding: 10
+                                    text: "-"
+                                    background: Rectangle { color: "#165dff"; radius: 4 }
+                                    contentItem: Text { text: "-"; color: "white"; font.pixelSize: 22; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+
+                                    // 长按快速减少时间的Timer
+                                    Timer {
+                                        id: studyMinutesTimer
+                                        interval: 100
+                                        repeat: true
+                                        onTriggered: {
+                                            if (displayModel && displayModel.studyMinutes > 1) {
+                                                displayModel.studyMinutes -= 1
+                                            } else {
+                                                studyMinutesTimer.stop()
+                                            }
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        onClicked: {
+                                            if (displayModel && displayModel.studyMinutes > 1) {
+                                                displayModel.studyMinutes -= 1
+                                            }
+                                        }
+                                        onPressAndHold: {
+                                            studyMinutesTimer.start()
+                                        }
+                                        onReleased: {
+                                            studyMinutesTimer.stop()
+                                        }
+                                    }
+                                }
+
+                                Text {
+                                    text: displayModel ? displayModel.studyMinutes : 25
+                                    font.pixelSize: 32
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+
+                                Button {
+                                    Layout.preferredWidth: 40
+                                    Layout.preferredHeight: 40
+                                    padding: 10
+                                    text: "+"
+                                    background: Rectangle { color: "#165dff"; radius: 4 }
+                                    contentItem: Text { text: "+"; color: "white"; font.pixelSize: 22; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                                    onClicked: {
+                                        if (displayModel && displayModel.studyMinutes < 180) {
+                                            displayModel.studyMinutes += 1
+                                        }
+                                    }
+                                }
                             }
                         }
-                    }
-                    
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            if (displayModel && displayModel.cyclesBeforeLong > 1) {
-                                displayModel.cyclesBeforeLong -= 1
-                            }
-                        }
-                        onPressAndHold: {
-                            cyclesTimer.start()
-                        }
-                        onReleased: {
-                            cyclesTimer.stop()
+
+                        Text {
+                            anchors.bottom: parent.bottom
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: "分"
+                            font.pixelSize: 18
+                            color: "#165dff"
                         }
                     }
                 }
-                
-                Text {
-                    text: displayModel ? displayModel.cyclesBeforeLong : 4
-                    font.pixelSize: 20
-                    verticalAlignment: Text.AlignVCenter
+
+                // 休息分钟输入 - 绿色边框
+                Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    
+                    Rectangle {
+                        anchors.centerIn: parent
+                        anchors.verticalCenterOffset: 10
+                        width: parent.width * 0.9
+                        height: parent.height * 0.8
+                        radius: 8
+                        border.color: "#2ed573"
+                        border.width: 2
+                        color: "#f0fff4"
+
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: 6
+
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: "短休息"
+                                font.pixelSize: 24  // 字体大小从18改为24
+                                color: "#2ed573"
+                            }
+
+                            Row {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                spacing: 45
+
+                                Button {
+                                    Layout.preferredWidth: 40
+                                    Layout.preferredHeight: 40
+                                    padding: 10
+                                    text: "-"
+                                    background: Rectangle { color: "#2ed573"; radius: 4 }
+                                    contentItem: Text { text: "-"; color: "white"; font.pixelSize: 22; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+
+                                    // 长按快速减少时间的Timer
+                                    Timer {
+                                        id: breakMinutesTimer
+                                        interval: 100
+                                        repeat: true
+                                        onTriggered: {
+                                            if (displayModel && displayModel.breakMinutes > 5) {
+                                                displayModel.breakMinutes -= 1
+                                            } else {
+                                                breakMinutesTimer.stop()
+                                            }
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        onClicked: {
+                                            if (displayModel && displayModel.breakMinutes > 5) {
+                                                displayModel.breakMinutes -= 1
+                                            }
+                                        }
+                                        onPressAndHold: {
+                                            breakMinutesTimer.start()
+                                        }
+                                        onReleased: {
+                                            breakMinutesTimer.stop()
+                                        }
+                                    }
+                                }
+
+                                Text {
+                                    text: displayModel ? displayModel.breakMinutes : 5
+                                    font.pixelSize: 32
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+
+                                Button {
+                                    Layout.preferredWidth: 40
+                                    Layout.preferredHeight: 40
+                                    padding: 10
+                                    text: "+"
+                                    background: Rectangle { color: "#2ed573"; radius: 4 }
+                                    contentItem: Text { text: "+"; color: "white"; font.pixelSize: 22; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                                    onClicked: {
+                                        if (displayModel && displayModel.breakMinutes < 36) {
+                                            displayModel.breakMinutes += 1
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Text {
+                            anchors.bottom: parent.bottom
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: "分"
+                            font.pixelSize: 18
+                            color: "#2ed573"
+                        }
+                    }
                 }
-                
-                Button {
-                    Layout.preferredWidth: 30
-                    Layout.preferredHeight: 30
-                    text: "+"
-                    background: Rectangle { color: "#165dff"; radius: 4 }
-                    contentItem: Text { text: "+"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                    onClicked: {
-                        if (displayModel && displayModel.cyclesBeforeLong < 10) {
-                            displayModel.cyclesBeforeLong += 1
+
+                // 长休息分钟 - 橙色边框
+                Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    
+                    Rectangle {
+                        anchors.centerIn: parent
+                        anchors.verticalCenterOffset: 10
+                        width: parent.width * 0.9
+                        height: parent.height * 0.8
+                        radius: 8
+                        border.color: "#ff9800"
+                        border.width: 2
+                        color: "#fff8e1"
+
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: 6
+
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: "长休息"
+                                font.pixelSize: 24  // 字体大小从18改为24
+                                color: "#ff9800"
+                            }
+
+                            Row {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                spacing: 45
+
+                                Button {
+                                    Layout.preferredWidth: 40
+                                    Layout.preferredHeight: 40
+                                    padding: 10
+                                    text: "-"
+                                    background: Rectangle { color: "#ff9800"; radius: 4 }
+                                    contentItem: Text { text: "-"; color: "white"; font.pixelSize: 22; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+
+                                    // 长按快速减少时间的Timer
+                                    Timer {
+                                        id: longBreakMinutesTimer
+                                        interval: 100
+                                        repeat: true
+                                        onTriggered: {
+                                            if (displayModel && displayModel.longBreakMinutes > 15) {
+                                                displayModel.longBreakMinutes -= 1
+                                            } else {
+                                                longBreakMinutesTimer.stop()
+                                            }
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        onClicked: {
+                                            if (displayModel && displayModel.longBreakMinutes > 15) {
+                                                displayModel.longBreakMinutes -= 1
+                                            }
+                                        }
+                                        onPressAndHold: {
+                                            longBreakMinutesTimer.start()
+                                        }
+                                        onReleased: {
+                                            longBreakMinutesTimer.stop()
+                                        }
+                                    }
+                                }
+
+                                Text {
+                                    text: displayModel ? displayModel.longBreakMinutes : 15
+                                    font.pixelSize: 32
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+
+                                Button {
+                                    Layout.preferredWidth: 40
+                                    Layout.preferredHeight: 40
+                                    padding: 10
+                                    text: "+"
+                                    background: Rectangle { color: "#ff9800"; radius: 4 }
+                                    contentItem: Text { text: "+"; color: "white"; font.pixelSize: 22; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                                    onClicked: {
+                                        if (displayModel && displayModel.longBreakMinutes < 30) {
+                                            displayModel.longBreakMinutes += 1
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Text {
+                            anchors.bottom: parent.bottom
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: "分"
+                            font.pixelSize: 18
+                            color: "#ff9800"
+                        }
+                    }
+                }
+
+                // cycles - 紫色边框
+                Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    
+                    Rectangle {
+                        anchors.centerIn: parent
+                        anchors.verticalCenterOffset: 10
+                        width: parent.width * 0.9
+                        height: parent.height * 0.8
+                        radius: 8
+                        border.color: "#9c27b0"
+                        border.width: 2
+                        color: "#f3e5f5"
+
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: 6
+
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: "长休间隔"
+                                font.pixelSize: 24  // 字体大小从18改为24
+                                color: "#9c27b0"
+                            }
+
+                            Row {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                spacing: 45
+
+                                Button {
+                                    Layout.preferredWidth: 40
+                                    Layout.preferredHeight: 40
+                                    padding: 10
+                                    text: "-"
+                                    background: Rectangle { color: "#9c27b0"; radius: 4 }
+                                    contentItem: Text { text: "-"; color: "white"; font.pixelSize: 22; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+
+                                    // 长按快速减少时间的Timer
+                                    Timer {
+                                        id: cyclesTimer
+                                        interval: 100
+                                        repeat: true
+                                        onTriggered: {
+                                            if (displayModel && displayModel.cyclesBeforeLong > 1) {
+                                                displayModel.cyclesBeforeLong -= 1
+                                            } else {
+                                                cyclesTimer.stop()
+                                            }
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        onClicked: {
+                                            if (displayModel && displayModel.cyclesBeforeLong > 1) {
+                                                displayModel.cyclesBeforeLong -= 1
+                                            }
+                                        }
+                                        onPressAndHold: {
+                                            cyclesTimer.start()
+                                        }
+                                        onReleased: {
+                                            cyclesTimer.stop()
+                                        }
+                                    }
+                                }
+
+                                Text {
+                                    text: displayModel ? displayModel.cyclesBeforeLong : 4
+                                    font.pixelSize: 32
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+
+                                Button {
+                                    Layout.preferredWidth: 40
+                                    Layout.preferredHeight: 40
+                                    padding: 10
+                                    text: "+"
+                                    background: Rectangle { color: "#9c27b0"; radius: 4 }
+                                    contentItem: Text { text: "+"; color: "white"; font.pixelSize: 22; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                                    onClicked: {
+                                        if (displayModel && displayModel.cyclesBeforeLong < 10) {
+                                            displayModel.cyclesBeforeLong += 1
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Text {
+                            anchors.bottom: parent.bottom
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: "个"
+                            font.pixelSize: 18
+                            color: "#9c27b0"
                         }
                     }
                 }
@@ -704,9 +904,9 @@ Rectangle {
                 
                 // 左侧：宠物区域（小鼠表情包）
                 Rectangle {
-                    Layout.preferredWidth: 390
-                    Layout.preferredHeight: 390
+                    Layout.fillWidth: true
                     Layout.fillHeight: true
+                    Layout.minimumHeight: 300
                     radius: 10
                     color: "white"
                     border.color: "#2ed573"
@@ -714,8 +914,8 @@ Rectangle {
                     
                     Image {
                         id: studyPetImg
-                        width: parent.width * 1.2
-                        height: parent.height * 1.2
+                        width: parent.width * 0.8
+                        height: parent.height * 0.8
                         anchors.centerIn: parent
                         source: displayModel ? displayModel.emotionPath : ""
                         fillMode: Image.PreserveAspectFit
@@ -731,8 +931,8 @@ Rectangle {
                     // 添加AnimatedImage支持动图
                     AnimatedImage {
                         id: studyPetAnimatedImg
-                        width: parent.width * 1.2
-                        height: parent.height * 1.2
+                        width: parent.width * 0.8
+                        height: parent.height * 0.8
                         anchors.centerIn: parent
                         source: displayModel ? displayModel.emotionPath : ""
                         fillMode: Image.PreserveAspectFit
@@ -762,10 +962,9 @@ Rectangle {
 
                 // 右侧：人脸检测区域
                 Rectangle {
-                    Layout.preferredWidth: 400
-                    Layout.preferredHeight: 280
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    Layout.minimumHeight: 300
                     radius: 10
                     color: "white"
                     border.color: "#165dff"
@@ -774,6 +973,7 @@ Rectangle {
                     Image {
                         id: faceImg
                         anchors.fill: parent
+                        anchors.margins: 10
                         source: displayModel ? displayModel.faceImage : ""
                         fillMode: Image.PreserveAspectFit
                         cache: true
