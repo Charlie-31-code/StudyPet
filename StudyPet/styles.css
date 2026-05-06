@@ -1,0 +1,9 @@
+.timer {
+    height: 50px; /* 缩小框的高度 */
+}
+
+.preset-button, .focus-time, .short-break, .long-break, .long-break-interval {
+    font-size: 48px; /* 进一步增大字体大小 */
+    padding: 3px 8px; /* 减小内边距以适应更大的字体 */
+    line-height: 1.1; /* 调整行高以防止文字溢出 */
+}
